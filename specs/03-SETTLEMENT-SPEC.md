@@ -114,47 +114,50 @@ lemonade admin chain register \
 
 ---
 
-## 6. Stripe SPT Flow
+## 6. MPP Payment Integration
 
-Most attendees pay with credit cards, Apple Pay, or Google Pay. They never interact with a blockchain. Stripe Stablecoin Payment Tokens (SPTs) bridge fiat payments into the ATLAS settlement layer.
+ATLAS uses the Machine Payments Protocol (MPP) for all agent payments. MPP is an open standard co-authored by Stripe and Tempo, launched in March 2026. It defines how AI agents pay for services programmatically across crypto and fiat rails.
 
-The full pipeline:
+MPP supports two payment paths:
+1. **Direct on-chain USDC.** The agent sends USDC directly to the organizer's chosen chain (Base, MegaETH, World Chain, Arbitrum, Ethereum L1).
+2. **Shared Payment Tokens (SPTs).** For fiat payments (credit cards, Apple Pay, Google Pay, BNPL like Affirm and Klarna), the agent receives an SPT with usage and expiration limits. Stripe handles the fiat charge, converts to USDC, and settles on the organizer's chosen chain.
 
+**On-chain USDC flow:**
 ```
-Attendee taps "Pay $25" (card / Apple Pay / Google Pay)
-       |
-       v
-Stripe charges $25 in attendee's local currency
-       |
-       v
-Stripe takes ~$0.38 (1.5% SPT conversion fee)
-       |
-       v
-Stripe mints SPT representing $24.62 in USDC value
-       |
-       v
-ATLAS backend receives SPT via Stripe webhook
-       |
-       v
-ATLAS redeems SPT for USDC on the organizer's chosen chain
-       |
-       v
-USDC sent to FeeRouter.sol on that chain
-       |
-       v
-FeeRouter splits:
-  - Organizer: $24.12 (ticket price minus 2% protocol fee)
-  - Protocol treasury: $0.125 (25% of 2% fee)
-  - Organizer reward pool: $0.15 (30% of 2% fee)
-  - Attendee reward pool: $0.10 (20% of 2% fee)
-  - Referral: $0.05 (10% of 2% fee)
-  - Reserve: $0.075 (15% of 2% fee)
-       |
-       v
-Receipt (W3C Verifiable Credential) issued to attendee
+Agent receives 402 Payment Required (MPP methods array)
+        |
+        v
+Agent selects "type": "crypto" method
+        |
+        v
+Agent sends USDC on specified chain to destination address
+        |
+        v
+FeeRouter.sol detects payment, executes split
+        |
+        v
+ATLAS issues receipt, marks hold complete
 ```
 
-For direct USDC payments, the flow skips Stripe entirely. The agent calls `FeeRouter.settle()` with the USDC amount, and the contract executes the split on-chain in a single transaction.
+**SPT fiat flow:**
+```
+Agent receives 402 Payment Required (MPP methods array)
+        |
+        v
+Agent selects "type": "spt" method
+        |
+        v
+Agent completes Shared Payment Token intent via Stripe API
+        |
+        v
+Stripe charges card, converts to USDC
+        |
+        v
+USDC routes to FeeRouter.sol on organizer's chosen chain
+        |
+        v
+FeeRouter splits: organizer + treasury + rewards + referral
+```
 
 ---
 
@@ -225,7 +228,7 @@ Three failure categories and their handling.
 }
 ```
 
-**Stripe SPT failure modes.** Three scenarios require distinct handling. First, if Stripe declines the card, no SPT is minted and the agent receives a `402` with a `payment_failed` reason. The hold remains active for retry. Second, if Stripe charges the card but SPT minting fails (rare), Stripe automatically refunds the charge within 24 hours. ATLAS logs the incident and notifies the agent. Third, if the SPT is minted but USDC redemption fails on-chain, the SPT remains in the ATLAS treasury wallet. A background job retries redemption every 5 minutes for up to 24 hours. If all retries fail, the operations team manually intervenes and the organizer is notified.
+**SPT fiat failure modes.** Three scenarios require distinct handling. First, if Stripe declines the card, no SPT is issued and the agent receives a `402` with a `payment_failed` reason. The hold remains active for retry. Second, if Stripe charges the card but SPT issuance fails (rare), Stripe automatically refunds the charge within 24 hours. ATLAS logs the incident and notifies the agent. Third, if the SPT is issued but USDC settlement fails on-chain, the funds remain in the Stripe settlement wallet. A background job retries settlement every 5 minutes for up to 24 hours. If all retries fail, the operations team manually intervenes and the organizer is notified.
 
 ---
 

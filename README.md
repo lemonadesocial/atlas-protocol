@@ -24,7 +24,7 @@ Event data is stored on IPFS for permanence. Settlement occurs in USDC on any su
 |------|-------------|
 | [01 Protocol Spec](specs/01-PROTOCOL-SPEC.md) | Core protocol: well-known endpoints, registry API, HTTP 402 purchase flow, W3C receipt format, versioning, error codes. |
 | [02 Schemas](specs/02-SCHEMAS.md) | Every JSON schema: AtlasEvent, AtlasTicketType, AtlasManifest, AtlasPurchaseChallenge, AtlasCredential, AtlasCampaign, AtlasMessage. |
-| [03 Settlement](specs/03-SETTLEMENT-SPEC.md) | Chain-agnostic settlement: Base, MegaETH, World Chain, Arbitrum, Ethereum. USDC routing, Stripe SPT integration, gas optimization. |
+| [03 Settlement](specs/03-SETTLEMENT-SPEC.md) | Chain-agnostic settlement: Base, MegaETH, World Chain, Arbitrum, Ethereum. USDC routing, MPP payment integration, gas optimization. |
 | [04 Smart Contracts](specs/04-SMART-CONTRACTS-SPEC.md) | Five Solidity contracts: FeeRouter, AtlasTicket (ERC-721), RewardLedger, RegistryPointer, PromotionSettlement. Function signatures, access control, upgrade paths. |
 | [05 IPFS Data Layer](specs/05-IPFS-DATA-LAYER.md) | IPFS as the permanence layer: publishing pipeline, CID generation, cluster operations, receipt storage, fallback resolution. |
 | [06 XMTP CRM](specs/06-XMTP-CRM-SPEC.md) | Decentralized CRM on XMTP: channel establishment, data model, key management, segment queries, messaging, privacy, portability. |

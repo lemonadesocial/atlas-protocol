@@ -131,10 +131,12 @@ All calculations use a $25 base ticket price.
 
 | Platform | Fee Structure | Organizer Net (on $25 ticket) |
 |---|---|---|
-| ATLAS (USDC direct) | 2% protocol fee | $24.49 (after cashback at Tier 1) |
-| ATLAS (card via Stripe SPT) | 2% protocol + ~1.5% Stripe processing | $24.11 (after cashback at Tier 1) |
+| ATLAS (MPP, on-chain USDC) | 2% protocol fee | $24.49 (after cashback at Tier 1) |
+| ATLAS (MPP, card via SPT Stripe fiat rail) | 2% protocol + ~1.5% SPT (Stripe fiat rail) processing | $24.11 (after cashback at Tier 1) |
 | Eventbrite | 3.7% + $1.79 per ticket + 2.9% payment processing | ~$21.50 to $22.50 |
 | Ticketmaster | 20-30% service fees | ~$17.50 to $20.00 |
+
+ATLAS is an MPP-compliant service. MPP (Machine Payments Protocol) is the open payment standard co-authored by Stripe and Tempo. MPP supports two rails: direct on-chain USDC for crypto settlement, and Shared Payment Tokens (SPTs) for fiat settlement via Stripe. The card row above reflects the SPT fiat rail inside MPP.
 
 ATLAS organizers keep 97-98% of ticket revenue at baseline. With cashback rewards at higher tiers, the effective cost drops below 1.5%. Eventbrite organizers lose 10-14% to fees. Ticketmaster organizers lose 20-30%.
 

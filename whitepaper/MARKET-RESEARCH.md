@@ -294,7 +294,7 @@ The Bending Spoons playbook (acquire, cut costs, raise prices, extract margin) c
 | Ticketmaster | 20-30% service fees (consumer-facing) | Varies by venue contract |
 | Ticket Tailor | $0.65/ticket flat fee | Fixed, low |
 | Humanitix | Similar to Eventbrite, fees go to charity | ~5-8% |
-| Atlas Direct Ticketing | 2% protocol fee | 2% (+ ~1.5% if Stripe SPT) |
+| Atlas Direct Ticketing | 2% protocol fee | 2% (+ ~1.5% if fiat via MPP SPTs) |
 
 Atlas's 2% protocol fee is structurally lower than every major platform. For a $25 ticket, Eventbrite charges roughly $2.50-3.00 in total fees. Atlas charges $0.50. The organizer keeps $24.12 (card) or $24.50 (USDC direct) through Atlas vs. roughly $21.50-22.50 through Eventbrite.
 
@@ -377,7 +377,7 @@ Atlas's protocol architecture naturally serves both generations through differen
 | Component | Gen Z Surface | Gen X Surface |
 |-----------|--------------|---------------|
 | Discovery | TikTok/Instagram-native agents, Discord bots | Email digests, Google Search, curated newsletters |
-| Purchase | Mobile-first, Apple Pay/Google Pay via Stripe SPT | Desktop + mobile, credit card via Stripe SPT |
+| Purchase | Mobile-first, Apple Pay/Google Pay via MPP (SPTs) | Desktop + mobile, credit card via MPP (SPTs) |
 | Rewards | Gamified cashback, referral bonuses, first-purchase bonus | Transparent fee savings, loyalty rewards |
 | Events | Fourth spaces, niche interest gatherings, creator events | Premium experiences, conferences, food/wine, travel |
 | Platform trust | Social proof, peer reviews, attendee UGC | Transparent pricing, platform reputation, quality guarantees |

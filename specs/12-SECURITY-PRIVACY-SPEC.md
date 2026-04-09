@@ -59,9 +59,11 @@ Each `hold_id` accepts exactly one payment. The FeeRouter contract stores a mapp
 
 ## 5. Payment Verification
 
-**On-chain payments (USDC):** The server verifies the transaction hash against three fields: recipient address (must match the FeeRouter contract), amount (must match the hold amount), and memo field (must contain the `hold_id`). Verification queries the chain's RPC endpoint. The server waits for 1 block confirmation on L2 chains and 12 confirmations on Ethereum L1.
+ATLAS is an MPP-compliant service. MPP (Machine Payments Protocol) is the open payment standard co-authored by Stripe and Tempo. MPP supports two rails: direct on-chain USDC and Shared Payment Tokens (SPTs) for fiat. The server verifies each rail as follows.
 
-**Stripe payments:** The server checks the Stripe PaymentIntent status. Only `status: "succeeded"` triggers settlement. The PaymentIntent metadata must contain the `hold_id`. Stripe webhook events provide redundant confirmation. The server reconciles webhook data against API responses daily.
+**MPP on-chain USDC:** The server verifies the transaction hash against three fields: recipient address (must match the FeeRouter contract), amount (must match the hold amount), and memo field (must contain the `hold_id`). Verification queries the chain's RPC endpoint. The server waits for 1 block confirmation on L2 chains and 12 confirmations on Ethereum L1.
+
+**SPT (via Stripe):** The server verifies the SPT intent status equals `succeeded` via the Stripe API. The SPT intent metadata must contain the `hold_id`. Stripe webhook events provide redundant confirmation. The server reconciles webhook data against API responses daily.
 
 ---
 

@@ -12,7 +12,7 @@
 
 ## Abstract
 
-**ATLAS** stands for **A**gent **T**icketing, **L**isting, **A**nd **S**ettlement. It is an open protocol that makes every event on the internet discoverable, bookable, and settleable by software agents. The architecture has three layers. An organizer layer imports existing inventory via OAuth. A platform layer integrates existing platforms and supports construction of new ones. A protocol core standardizes discovery, listing, purchase, and settlement using existing web standards and stablecoin payments. ATLAS does not require platforms to opt in first. Like Plaid, it starts with the user: organizers authorize access to their events, and the network grows from there. Event data is stored on IPFS for permanence and censorship resistance. Settlement occurs in USDC on any supported EVM-compatible chain, with a flat 2% protocol fee. The protocol returns value to participants through USDC cashback, not speculative tokens. On the supply side, the same agent infrastructure helps organizers create events, manage guest relationships through decentralized CRM on XMTP, and reach new audiences through a protocol-native ad-network.
+**ATLAS** stands for **A**gent **T**icketing, **L**isting, **A**nd **S**ettlement. It is an open protocol that makes every event on the internet discoverable, bookable, and settleable by software agents. The architecture has three layers. An organizer layer imports existing inventory via OAuth. A platform layer integrates existing platforms and supports construction of new ones. A protocol core standardizes discovery, listing, purchase, and settlement using existing web standards. Payments ride on the Machine Payments Protocol (MPP), the open standard co-authored by Stripe and Tempo for agent-driven commerce. ATLAS does not require platforms to opt in first. Like Plaid, it starts with the user: organizers authorize access to their events, and the network grows from there. Event data is stored on IPFS for permanence and censorship resistance. Settlement occurs in USDC on any supported EVM-compatible chain, with a flat 2% protocol fee. The protocol returns value to participants through USDC cashback, not speculative tokens. On the supply side, the same agent infrastructure helps organizers create events, manage guest relationships through decentralized CRM on XMTP, and reach new audiences through a protocol-native ad-network.
 
 ---
 
@@ -112,7 +112,7 @@ The protocol exists to serve event organizers. Design decisions that benefit pla
 
 ### 3.3 Payment-Agnostic at the Edge
 
-The protocol core settles in USDC on any supported EVM-compatible chain for efficiency and finality. But attendees can pay with credit cards, Apple Pay, Google Pay, or any method supported by Stripe Stablecoin Payment Tokens (SPTs). The complexity of payment conversion is hidden from both organizers and attendees.
+The protocol core settles in USDC on any supported EVM-compatible chain for efficiency and finality. Payments ride on the Machine Payments Protocol (MPP), which offers two paths: direct on-chain USDC on any supported EVM chain, or fiat via Shared Payment Tokens (SPTs). SPTs cover credit cards, Apple Pay, Google Pay, and BNPL providers like Affirm and Klarna. The complexity of payment conversion is hidden from both organizers and attendees.
 
 ### 3.4 Privacy-Preserving
 
@@ -213,18 +213,27 @@ Content-Type: application/json
   "atlas:holdId": "hold_xyz789",
   "atlas:holdExpires": "2026-04-14T21:10:00Z",
   "atlas:payment": {
-    "amount": "25.00",
-    "currency": "USDC",
-    "destination": "0x...settlement_address",
-    "chain": "base",
-    "stripe_spt_intent": "spt_intent_abc123"
+    "mpp_version": "1.0",
+    "methods": [
+      {
+        "type": "crypto",
+        "chain": "base",
+        "token": "USDC",
+        "amount": "25.00",
+        "destination": "0x...settlement_address"
+      },
+      {
+        "type": "spt",
+        "spt_intent": "spt_intent_abc123",
+        "amount": "25.00",
+        "currency": "USD"
+      }
+    ]
   }
 }
 ```
 
-**Step 2: Payment.** The agent (or the agent's payment service) either:
-- Sends USDC directly on the specified chain to the destination address, or
-- Completes the Stripe SPT intent (enabling credit card, Apple Pay, etc.)
+**Step 2: Payment.** The agent (or the agent's payment service) pays via MPP using one of the offered methods: either sends USDC directly on the specified chain to the destination address, or completes the SPT intent (for credit card, Apple Pay, Google Pay, or BNPL payments).
 
 **Step 3: Confirmation.** Once payment is detected (on-chain confirmation or Stripe webhook), the server releases the ticket and responds with a receipt.
 
@@ -252,7 +261,7 @@ Additional chains can be added through a governance proposal (see Section 13). T
 
 **IPFS as the data layer.** Every ATLAS event listing is published to IPFS at the time of creation. The listing receives a content identifier (CID) derived from its content. The CID is immutable: if the listing changes, a new CID is generated and the on-chain pointer updates. The original version remains permanently available on IPFS. The registry indexes CIDs alongside event metadata, and any IPFS node can serve the listing data. If Lemonade's infrastructure goes offline, every listing ever published remains accessible through the IPFS network.
 
-For attendees who pay with credit cards or digital wallets, **Stripe Stablecoin Payment Tokens (SPTs)** handle the conversion. The attendee pays in their local currency. Stripe converts to USDC. ATLAS settles on the organizer's chosen chain. The organizer receives USDC. The entire flow is invisible to the attendee.
+For attendees who pay with credit cards or digital wallets, **Shared Payment Tokens (SPTs)** handle the conversion within the MPP protocol. The attendee pays in their local currency. Stripe processes the charge. ATLAS receives the SPT, redeems it for USDC, and settles on the organizer's chosen chain. The organizer receives USDC. The entire flow is invisible to the attendee.
 
 ### 4.5 Receipt
 
@@ -381,7 +390,7 @@ Consider an entrepreneur who wants to build a platform for underground electroni
 With ATLAS, they build: a curated frontend and community features. ATLAS provides:
 - **Discovery:** Events are automatically agent-discoverable
 - **Ticketing:** The 402 purchase flow handles holds, payments, and settlement
-- **Payments:** USDC on any supported chain + Stripe SPTs, no payment integration to build
+- **Payments:** MPP-compliant, supporting direct USDC on any chain and fiat via SPTs, no payment integration to build
 - **Data format:** JSON-LD listings are the canonical data model
 
 The entrepreneur ships in weeks, not years. Their platform is agent-accessible from day one. Their events are discoverable across the entire ATLAS network. They compete on curation and community, not infrastructure.
@@ -441,7 +450,7 @@ GET https://registry.atlas.events/v1/search?
 
 An agent executes a purchase through the 402 flow described in Section 4.3. The agent needs:
 
-1. A payment method (USDC wallet or Stripe SPT capability)
+1. A payment method (MPP-compatible: USDC wallet or SPT capability)
 2. User authorization (the attendee approves the purchase)
 3. A delivery address for the receipt (email or wallet)
 
@@ -470,7 +479,7 @@ lemonade event search --near "40.7128,-74.006" --radius 10km --category music --
 lemonade ticket hold --event evt_abc123 --type "General Admission" --quantity 2 --format json
 
 # Agent completes purchase
-lemonade ticket purchase --hold hold_xyz789 --method stripe-spt --format json
+lemonade ticket purchase --hold hold_xyz789 --method mpp --format json
 ```
 
 The CLI treats event operations as shell primitives. Agents that already orchestrate `git`, `npm`, and cloud CLIs gain event capabilities with zero new abstractions.
@@ -496,7 +505,7 @@ const hold = await atlas.holdTicket(events[0].ticketTypes[0], {
 })
 
 const receipt = await atlas.pay(hold, {
-  method: 'stripe-spt',
+  method: 'mpp',
   returnUrl: 'https://myagent.app/confirmation'
 })
 ```
@@ -590,17 +599,19 @@ The protocol is designed so that adding a new chain requires deploying the same 
 
 **Identity verification is pluggable.** Chains that offer native identity (World ID on World Chain) get deeper integration: boosted reward rates, gas subsidies, anti-fraud signals. Chains without native identity can integrate third-party attestation providers (Self.xyz, Civic, Polygon ID) at the application layer. The reward contract checks for any valid on-chain attestation and applies the appropriate rate.
 
-### 7.3 Stripe Stablecoin Payment Tokens (SPTs)
+### 7.3 Machine Payments Protocol (MPP)
 
-Most attendees will not hold USDC. They will pay with credit cards, Apple Pay, or Google Pay. Stripe SPTs bridge this gap:
+ATLAS uses the Machine Payments Protocol (MPP) for all agent payments. MPP is an open standard co-authored by Stripe and Tempo, launched in March 2026. It defines how AI agents pay for services programmatically across crypto and fiat rails.
 
-1. Attendee initiates payment via familiar UI (card form, wallet button)
-2. Stripe processes the charge in the attendee's local currency
-3. Stripe mints a stablecoin payment token representing the settled amount
-4. ATLAS receives the SPT and completes settlement on the organizer's chosen chain
-5. Organizer receives USDC
+MPP supports two payment paths:
 
-The attendee experience is identical to any online purchase. The organizer receives USDC with instant finality. The protocol operates entirely on-chain. Stripe handles the fiat complexity at the edge.
+1. **Direct on-chain USDC.** The agent sends USDC directly to the organizer's chosen EVM chain (Base, MegaETH, World Chain, Arbitrum, Ethereum L1). No intermediary. No fiat conversion. The ATLAS FeeRouter contract receives the payment and executes the fee split.
+
+2. **Shared Payment Tokens (SPTs).** For attendees who pay with credit cards, Apple Pay, Google Pay, or BNPL (Affirm, Klarna), the agent receives an SPT with usage and expiration limits. The SPT abstracts the underlying card details. Stripe processes the charge, converts to USDC, and settles on the organizer's chosen chain.
+
+The attendee experience is identical to any online purchase. The organizer receives USDC. MPP handles the payment layer (how to pay). ATLAS handles the event-specific layer: discovery, listing, settlement routing, and receipts.
+
+ATLAS is an MPP-compliant service. Any MPP-compatible agent can discover and purchase tickets through ATLAS without custom integration work.
 
 ### 7.4 Fee Structure
 
@@ -608,7 +619,7 @@ The attendee experience is identical to any online purchase. The organizer recei
 |-----------|-----|-----------|
 | ATLAS protocol fee | 2% of transaction | Protocol treasury |
 | Network fee (varies by chain) | ~$0.001-0.03 per tx | Chain validators / sequencer |
-| Stripe SPT fee (if applicable) | ~1.5% of transaction | Stripe |
+| MPP SPT fee (if applicable) | ~1.5% of transaction | Stripe |
 
 For a $25 ticket purchased via credit card (on an L2):
 - Attendee pays: $25.00
@@ -933,7 +944,7 @@ A new platform built on ATLAS ships with:
 - Agent discoverability from day one
 - USDC settlement with low-cent fees from day one
 - Cross-platform visibility from day one
-- Credit card and wallet acceptance (via Stripe SPTs) from day one
+- Credit card and wallet acceptance (via MPP SPTs) from day one
 
 ### 12.3 Who Builds on ATLAS
 

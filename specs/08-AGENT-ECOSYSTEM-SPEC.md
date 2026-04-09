@@ -76,7 +76,7 @@ Submits payment proof to finalize a held ticket purchase.
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
 | hold_id | string | yes | Hold identifier from `atlas_hold_ticket` |
-| payment_proof | object | yes | On-chain: `{tx_hash, chain_id}`. Stripe: `{payment_intent_id}` |
+| payment_proof | object | yes | On-chain USDC: `{tx_hash, chain_id}`. MPP via SPT: `{payment_intent_id}` |
 
 **Output:** A receipt credential (W3C Verifiable Credential) containing the event ID, ticket type, quantity, settlement chain, and IPFS CID of the receipt. The receipt is published to IPFS and can be independently verified.
 
@@ -219,8 +219,10 @@ lemonade promote stats --campaign camp_abc123 --format json
 lemonade ticket hold --event evt_abc123 --type "General Admission" --quantity 2 --format json
 
 # Complete purchase
-lemonade ticket purchase --hold hold_xyz789 --method stripe-spt --format json
+lemonade ticket purchase --hold hold_xyz789 --method mpp --format json
 ```
+
+ATLAS is an MPP-compliant service. MPP (Machine Payments Protocol) is the open payment standard co-authored by Stripe and Tempo, launched March 18, 2026. MPP supports two payment rails: direct on-chain USDC for crypto settlement, and Shared Payment Tokens (SPTs) for fiat settlement via Stripe. The `--method mpp` flag accepts either rail. The CLI selects the rail based on the hold's accepted payment methods and the agent's configured wallet.
 
 ### 4.6 Page Commands
 
@@ -258,7 +260,7 @@ const hold = await atlas.holdTicket(event.ticketTypes[0], { quantity: 2 })
 
 // Complete payment
 const receipt = await atlas.pay(hold, {
-  method: 'stripe-spt',
+  method: 'mpp',
   returnUrl: 'https://myagent.app/confirmation'
 })
 ```
@@ -409,7 +411,7 @@ lemonade event search --near "40.7128,-74.006" --radius 10km --category music --
 lemonade ticket hold --event evt_xyz789 --type ga --quantity 2 --format json
 # Output: {"hold_id": "hold_abc", "amount": "50.00", "chain": "base", "ttl": 300}
 
-lemonade ticket purchase --hold hold_abc --method stripe-spt --format json
+lemonade ticket purchase --hold hold_abc --method mpp --format json
 # Output: {"receipt_cid": "bafy...xyz", "tickets": 2, "settled": true}
 ```
 

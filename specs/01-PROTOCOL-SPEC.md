@@ -147,7 +147,7 @@ Results are ranked by six factors in priority order: relevance to query text, ge
 
 ## 3. HTTP 402 Purchase Flow
 
-ATLAS uses HTTP 402 (Payment Required) as the foundation of its ticket purchase protocol. The flow has three steps: hold, pay, confirm.
+ATLAS uses HTTP 402 (Payment Required) as the foundation of its ticket purchase protocol. The flow has three steps: hold, pay, confirm. Payment is handled via MPP (Machine Payments Protocol), the open standard co-authored by Stripe and Tempo and launched March 18, 2026. ATLAS is an MPP-compliant service. MPP supports direct on-chain USDC on any supported EVM chain and fiat payments via SPTs (Shared Payment Tokens).
 
 ### 3.1 Step 1: Hold Request
 
@@ -181,13 +181,22 @@ Content-Type: application/json
   "atlas:holdExpires": "2026-04-14T21:10:00Z",
   "atlas:holdTTL": 300,
   "atlas:payment": {
-    "amount": "50.00",
-    "currency": "USDC",
-    "destination": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
-    "chain": "base",
-    "chain_id": 8453,
-    "memo": "hold_xyz789",
-    "stripe_spt_intent": "spt_intent_abc123"
+    "mpp_version": "1.0",
+    "methods": [
+      {
+        "type": "crypto",
+        "chain": "base",
+        "token": "USDC",
+        "amount": "25.00",
+        "destination": "0x...settlement_address"
+      },
+      {
+        "type": "spt",
+        "spt_intent": "spt_intent_abc123",
+        "amount": "25.00",
+        "currency": "USD"
+      }
+    ]
   },
   "atlas:tickets": [
     {
@@ -225,11 +234,11 @@ The `retry_after` field indicates the maximum seconds until the conflicting hold
 
 ### 3.4 Step 2: Payment
 
-The agent completes payment through one of two methods.
+The agent picks one option from the `methods` array in the payment envelope and completes it.
 
-**On-chain USDC transfer.** The agent (or its payment service) sends USDC on the specified chain to the `destination` address. The `memo` field (hold ID) MUST be included in the transaction data for matching. The server monitors the chain for incoming transfers and matches by recipient address, amount, and memo.
+**On-chain USDC transfer.** The agent (or its payment service) sends USDC on the specified chain to the `destination` address. The hold ID MUST be included in the transaction data for matching. The server monitors the chain for incoming transfers and matches by recipient address, amount, and hold ID.
 
-**Stripe SPT.** The agent completes the Stripe Stablecoin Payment Token intent using the `stripe_spt_intent` ID. The attendee pays in local currency. Stripe converts to USDC. The server receives a webhook confirming settlement.
+**SPT (fiat payment).** The agent completes the Shared Payment Token intent from the `methods` array. Stripe processes the charge in the attendee's local currency, converts to USDC, and delivers it to the organizer's chosen chain. The server receives a webhook confirming settlement.
 
 ### 3.5 Step 3: Confirmation
 
@@ -495,7 +504,7 @@ Agent                          Server                         Chain
   |  402 + payment challenge     |                              |
   |<-----------------------------|                              |
   |                              |                              |
-  |  USDC transfer (or Stripe)   |                              |
+  |  USDC transfer (or SPT)      |                              |
   |------------------------------------------------------------->|
   |                              |                              |
   |                              |  Monitor chain / webhook     |

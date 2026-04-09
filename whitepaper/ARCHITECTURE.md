@@ -30,7 +30,8 @@ ATLAS is a seven-layer protocol stack. Each layer operates independently and com
 +------------------------------------------------------------------+
 |                     SETTLEMENT LAYER                              |
 |  Base | MegaETH | World Chain | Arbitrum | Ethereum L1            |
-|  USDC settlement | Fee split contracts | Stripe SPT bridge       |
+|  USDC settlement | Fee split contracts                            |
+|  MPP payment rails (on-chain USDC + SPTs for fiat)                |
 +------------------------------------------------------------------+
 |                     SMART CONTRACT LAYER                          |
 |  FeeRouter | AtlasTicket | RewardLedger | RegistryPointer |      |
@@ -144,18 +145,29 @@ No protocol changes. No schema changes. No agent SDK updates. The listing format
 - **Meta-transactions:** Organizers and guests can submit gasless transactions via relayer services. The protocol treasury covers gas costs and recoups from the 2% fee.
 - **World ID gas allowance:** Verified humans on World Chain receive priority blockspace and a gas subsidy from the chain itself. Their ATLAS transactions cost nothing.
 
-### 3.6 Stripe SPT Integration
+### 3.6 MPP Payment Integration
 
-For attendees paying with credit cards, Apple Pay, or Google Pay:
+ATLAS uses the Machine Payments Protocol (MPP) as its payment layer. MPP is an open standard co-authored by Stripe and Tempo. It defines how AI agents pay for services programmatically.
+
+MPP supports two payment paths:
+
+**Path 1: Direct on-chain USDC.** The agent sends USDC directly to the organizer's chosen chain. No fiat conversion. The transaction settles in one block on L2s (Base, MegaETH, World Chain, Arbitrum) or 12 blocks on Ethereum L1.
+
+**Path 2: Shared Payment Tokens (SPTs) for fiat.** The agent receives an SPT with usage and expiration limits. The SPT abstracts the underlying card details (Visa, Mastercard, Apple Pay, Google Pay, Affirm, Klarna). Stripe processes the charge, converts to USDC, and settles on the organizer's chosen chain.
+
+The full MPP payment flow for a credit card purchase:
 
 ```
-Attendee pays in local currency (card/wallet)
+Attendee pays $25 in card/wallet
         |
         v
-Stripe processes charge, mints Stablecoin Payment Token (SPT)
+Agent creates SPT via Stripe (usage: 1 charge, expires: 5 min)
         |
         v
-ATLAS receives SPT, redeems for USDC
+Agent submits SPT to ATLAS via MPP payment envelope
+        |
+        v
+Stripe processes charge, converts to USDC
         |
         v
 USDC routes to FeeRouter.sol on organizer's chosen chain
@@ -164,7 +176,7 @@ USDC routes to FeeRouter.sol on organizer's chosen chain
 FeeRouter splits: organizer + treasury + rewards + referral
 ```
 
-The attendee never interacts with blockchain. The organizer receives USDC. Stripe handles fiat complexity at the edge.
+The attendee never sees a blockchain. The organizer receives USDC. MPP handles the payment layer. ATLAS handles discovery, listing, and settlement routing.
 
 **Related specs:** PROTOCOL-SPEC.md Section 8 (payment methods), FEE-STRUCTURE.md (fee math).
 
@@ -574,7 +586,7 @@ Five contracts form the ATLAS on-chain layer. Each is deployed independently to 
 
 - **Idempotency:** UUID v4 keys stored for 24 hours per agent. Duplicate purchase requests return the original response. Prevents double charges.
 - **Hold mechanism:** Ticket inventory locked for minimum 300 seconds (5 minutes). Automatic release on expiration. Prevents overselling.
-- **Payment verification:** On-chain: check tx hash for correct recipient, amount, and memo field. Stripe: check PaymentIntent status = "succeeded."
+- **Payment verification:** On-chain path: check tx hash for correct recipient, amount, and memo field. SPT fiat path: check Stripe PaymentIntent status equals "succeeded" and the resulting USDC settlement lands on FeeRouter.
 - **Double-spend prevention:** Each hold_id accepts exactly one payment. The FeeRouter contract rejects duplicate settlement attempts for the same hold_id.
 
 ### 9.3 Data Privacy
@@ -614,7 +626,7 @@ Five contracts form the ATLAS on-chain layer. Each is deployed independently to 
 | IPFS cluster | Kubo (3+ nodes) | Event listing and receipt storage |
 | Smart contracts | Solidity (Hardhat/Foundry) | On-chain settlement, tickets, rewards |
 | Message relay | XMTP SDK | Organizer-guest communication |
-| Payment bridge | Stripe SPT API | Fiat-to-USDC conversion |
+| Payment layer | MPP (on-chain USDC + SPTs for fiat) | Agent-to-service payments |
 
 ### 10.2 Deployment
 
@@ -631,7 +643,7 @@ Five contracts form the ATLAS on-chain layer. Each is deployed independently to 
 | Settlement confirmation | < 30 seconds on L2 | > 60 seconds |
 | IPFS publish success rate | > 99.9% | < 99% |
 | Hold expiration accuracy | Within 5 seconds of TTL | > 30 seconds drift |
-| Stripe SPT conversion | > 99% success | < 95% success |
+| MPP SPT fiat settlement | > 99% success | < 95% success |
 
 Dashboards: Grafana. Alerting: PagerDuty for SLA breaches.
 
@@ -678,7 +690,7 @@ Agent --> atlas_hold_ticket(event_id, ticket_type, quantity)
 Server responds: 402 Payment Required + payment challenge
     |
     v
-Agent --> payment (USDC on-chain OR Stripe SPT)
+Agent --> MPP payment (on-chain USDC OR SPT fiat rail)
     |
     v
 FeeRouter.sol splits payment: organizer + treasury + rewards

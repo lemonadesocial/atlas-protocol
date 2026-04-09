@@ -190,36 +190,43 @@ A single ticket tier within an event listing. Nested inside the `atlas:ticketTyp
 
 ## 4. AtlasPurchaseChallenge
 
-The 402 Payment Required response body. Returned when an agent requests a ticket hold. Contains everything the agent needs to execute payment: amount, destination, chain, and an optional Stripe SPT intent for fiat buyers.
+The 402 Payment Required response body. Returned when an agent requests a ticket hold. The challenge uses MPP (Machine Payments Protocol) format with a `methods` array, giving the agent one or more payment options to pick from. MPP is the open standard co-authored by Stripe and Tempo. ATLAS is an MPP-compliant service. Options include direct on-chain USDC on any supported EVM chain and fiat payment via SPTs (Shared Payment Tokens), the fiat component within MPP.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `hold_id` | string | yes | Unique hold identifier. Used to complete the purchase. |
 | `hold_expires` | string | yes | ISO 8601 timestamp. Hold releases automatically after expiry (minimum 300 seconds). |
-| `payment` | object | yes | Payment instructions. |
-| `payment.amount` | string | yes | Total USDC amount due (string for precision). |
-| `payment.currency` | string | yes | Always `"USDC"` for on-chain settlement. |
-| `payment.destination` | string | yes | EVM address of the FeeRouter contract on the specified chain. |
-| `payment.chain` | string | yes | Settlement chain identifier (e.g. `"base"`, `"arbitrum"`). |
-| `payment.stripe_spt_intent` | string | no | Stripe SPT PaymentIntent ID for fiat payment. Null if Stripe is not configured. |
+| `payment` | object | yes | MPP payment envelope. |
+| `payment.mpp_version` | string | yes | MPP protocol version. Current: `"1.0"`. |
+| `payment.methods` | object[] | yes | List of payment method options. The agent selects one and completes it. Each entry has a `type` (`"crypto"` or `"spt"`) plus method-specific fields (chain, token, amount, destination for crypto; spt_intent, amount, currency for SPT). |
 | `required_credential_type` | string | no | Identity credential required for purchase (e.g. `"world_id"`, `"civic"`). Null if none required. |
 
 ```json
 {
-  "hold_id": "hold_xyz789",
-  "hold_expires": "2026-04-14T21:10:00Z",
-  "payment": {
-    "amount": "25.00",
-    "currency": "USDC",
-    "destination": "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
-    "chain": "base",
-    "stripe_spt_intent": "spt_intent_abc123"
-  },
-  "required_credential_type": null
+  "atlas:holdId": "hold_xyz789",
+  "atlas:holdExpires": "2026-04-14T21:10:00Z",
+  "atlas:payment": {
+    "mpp_version": "1.0",
+    "methods": [
+      {
+        "type": "crypto",
+        "chain": "base",
+        "token": "USDC",
+        "amount": "25.00",
+        "destination": "0x...settlement_address"
+      },
+      {
+        "type": "spt",
+        "spt_intent": "spt_intent_abc123",
+        "amount": "25.00",
+        "currency": "USD"
+      }
+    ]
+  }
 }
 ```
 
-The agent reads the `chain` and `destination` fields, then sends USDC on the specified chain. For fiat buyers, the agent completes the `stripe_spt_intent` through Stripe's API. The hold prevents double-selling during the payment window.
+The agent picks one entry from `payment.methods` and completes it. For a `crypto` method, the agent sends the specified token on the specified chain to the `destination` address. For an `spt` method, the agent completes the Shared Payment Token intent. Stripe processes the charge in the attendee's local currency, converts to USDC, and delivers it to the organizer's chosen chain. The hold prevents double-selling during the payment window.
 
 ---
 
