@@ -1,1 +1,8 @@
 .DS_Store
+*.docx
+*.py
+__pycache__/
+node_modules/
+.env
+.env.*
+*.log
