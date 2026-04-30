@@ -1,16 +1,43 @@
 {
   "name": "@atlas/server-sdk",
-  "version": "0.0.0",
-  "private": false,
+  "version": "0.1.0",
+  "description": "Server-side ATLAS Protocol primitives. Manifest generation, schema mapping, multi-chain payment verification. Framework-agnostic.",
   "license": "MIT",
-  "description": "Placeholder — implementation arrives in a follow-up.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lemonadesocial/atlas-protocol.git",
+    "directory": "packages/server-sdk"
+  },
+  "keywords": [
+    "atlas",
+    "atlas-protocol",
+    "server",
+    "well-known",
+    "x402",
+    "usdc",
+    "events"
+  ],
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
-    "build": "echo 'Not yet implemented'",
-    "test": "echo 'Not yet implemented'",
-    "lint": "echo 'Not yet implemented'",
-    "typecheck": "echo 'Not yet implemented'"
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "echo \"no lint configured\" && exit 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.0.0"
   }
 }
