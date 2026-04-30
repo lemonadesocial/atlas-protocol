@@ -29,13 +29,10 @@ jobs:
         with:
           version: 9.15.0
 
-      # Node 24 bundles npm 11.x, which is required for OIDC trusted publisher
-      # token exchange. Pinned here for the publish path only; .nvmrc still
-      # governs CI (lint/test/build) and developer environments.
       - uses: actions/setup-node@v6
         if: ${{ steps.release.outputs.releases_created }}
         with:
-          node-version: '24'
+          node-version-file: .nvmrc
           registry-url: 'https://registry.npmjs.org'
           cache: pnpm
 

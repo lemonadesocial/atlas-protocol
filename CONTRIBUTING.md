@@ -22,12 +22,12 @@ atlas-protocol/
 ## Local setup
 
 Requirements:
-- Node `>=22` (see `.nvmrc`)
+- Node `>=24` (see `.nvmrc`)
 - pnpm `>=9.0` (the repo pins `pnpm@9.15.0` via `packageManager`)
 - [Foundry](https://book.getfoundry.sh/getting-started/installation) for `contracts/`
 
 ```bash
-nvm use            # picks up .nvmrc → Node 22
+nvm use            # picks up .nvmrc → Node 24
 corepack enable    # makes the pinned pnpm available
 pnpm install
 pnpm typecheck
