@@ -29,10 +29,13 @@ jobs:
         with:
           version: 9.15.0
 
+      # Node 24 bundles npm 11.x, which is required for OIDC trusted publisher
+      # token exchange. Pinned here for the publish path only; .nvmrc still
+      # governs CI (lint/test/build) and developer environments.
       - uses: actions/setup-node@v6
         if: ${{ steps.release.outputs.releases_created }}
         with:
-          node-version-file: .nvmrc
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
           cache: pnpm
 
@@ -41,11 +44,6 @@ jobs:
 
       - run: pnpm build
         if: ${{ steps.release.outputs.releases_created }}
-
-      # OIDC trusted publishers require npm CLI 11.5.1+; Node 22 ships with npm 10.
-      - name: Upgrade npm to OIDC-capable version
-        if: ${{ steps.release.outputs.releases_created }}
-        run: npm install -g npm@latest
 
       # Authentication via OIDC trusted publishers — see https://docs.npmjs.com/trusted-publishers
       - name: Publish released packages
