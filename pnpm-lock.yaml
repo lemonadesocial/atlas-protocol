@@ -15,6 +15,25 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
+  examples/connector-eventbrite:
+    dependencies:
+      '@atlas/connector-framework':
+        specifier: workspace:*
+        version: link:../../packages/connector-framework
+      '@atlas/server-sdk':
+        specifier: workspace:*
+        version: link:../../packages/server-sdk
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.19.17)
+
   packages/agent-tools:
     devDependencies:
       '@langchain/core':
@@ -35,6 +54,56 @@ importers:
       zod:
         specifier: ^4.0.0
         version: 4.4.1
+
+  packages/connector-framework:
+    devDependencies:
+      '@atlas/server-sdk':
+        specifier: workspace:*
+        version: link:../server-sdk
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.19.17)
+
+  packages/ipfs:
+    dependencies:
+      multiformats:
+        specifier: ^13.3.0
+        version: 13.4.2
+    devDependencies:
+      '@atlas/server-sdk':
+        specifier: workspace:*
+        version: link:../server-sdk
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.19.17)
+
+  packages/mpp:
+    dependencies:
+      jose:
+        specifier: ^5.9.0
+        version: 5.10.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.19.17)
 
   packages/server-sdk:
     dependencies:
@@ -695,6 +764,9 @@ packages:
     peerDependencies:
       ws: '*'
 
+  jose@5.10.0:
+    resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
+
   jose@6.2.3:
     resolution: {integrity: sha512-YYVDInQKFJfR/xa3ojUTl8c2KoTwiL1R5Wg9YCydwH0x0B9grbzlg5HC7mMjCtUJjbQ/YnGEZIhI5tCgfTb4Hw==}
 
@@ -752,6 +824,9 @@ packages:
 
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
+
+  multiformats@13.4.2:
+    resolution: {integrity: sha512-eh6eHCrRi1+POZ3dA+Dq1C6jhP1GNtr9CRINMb67OKzqW9I5DUuZM/3jLPlzhgpGeiNUlEGEbkCYChXMCc/8DQ==}
 
   mustache@4.2.0:
     resolution: {integrity: sha512-71ippSywq5Yb7/tVYyGbkBggbU8H3u5Rz56fH60jGFgr8uHwxs+aSKeqmluIVzM0m0kB7xQjKS6qPfd0b2ZoqQ==}
@@ -1656,6 +1731,8 @@ snapshots:
     dependencies:
       ws: 8.18.3
 
+  jose@5.10.0: {}
+
   jose@6.2.3: {}
 
   js-tiktoken@1.0.21:
@@ -1694,6 +1771,8 @@ snapshots:
       mime-db: 1.54.0
 
   ms@2.1.3: {}
+
+  multiformats@13.4.2: {}
 
   mustache@4.2.0: {}
 
