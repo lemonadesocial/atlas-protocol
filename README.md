@@ -31,7 +31,7 @@ pnpm build
 pnpm test
 ```
 
-Node `>=22` and pnpm `>=9` are required. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full setup, package conventions, and spec-change process.
+Node `>=24` and pnpm `>=9` are required. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full setup, package conventions, and spec-change process.
 
 ---
 

@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "@atlasprotocol/server-sdk": "workspace:*",
-    "@types/node": "^22.0.0",
+    "@types/node": "^24.0.0",
     "typescript": "^5.6.3",
     "vitest": "^2.0.0"
   }
