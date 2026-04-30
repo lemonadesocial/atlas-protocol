@@ -1,0 +1,42 @@
+name: Manual Publish
+
+# Manually publish all @atlasprotocol/* packages at their current package.json versions.
+# Trigger from GitHub UI: Actions tab -> Manual Publish -> Run workflow.
+# Use this when release-please created GitHub releases but the npm publish step failed
+# and re-running release-please won't republish (its outputs are based on new releases).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Publish all @atlasprotocol packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -e
+          for pkg in agent-tools server-sdk mpp ipfs connector-framework; do
+            VERSION=$(node -p "require('./packages/$pkg/package.json').version")
+            echo "=== Publishing @atlasprotocol/$pkg@$VERSION ==="
+            if curl -sf "https://registry.npmjs.org/@atlasprotocol/$pkg/$VERSION" > /dev/null; then
+              echo "Already published, skipping."
+            else
+              (cd "packages/$pkg" && npm publish --provenance --access public)
+            fi
+          done
