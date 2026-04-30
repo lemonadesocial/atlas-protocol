@@ -1,0 +1,16 @@
+{
+  "name": "@atlas/agent-tools",
+  "version": "0.0.0",
+  "private": false,
+  "license": "MIT",
+  "description": "Placeholder — implementation arrives in a follow-up.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "echo 'Not yet implemented'",
+    "test": "echo 'Not yet implemented'",
+    "lint": "echo 'Not yet implemented'",
+    "typecheck": "echo 'Not yet implemented'"
+  }
+}

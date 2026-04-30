@@ -8,6 +8,33 @@ Event data is stored on IPFS for permanence. Settlement occurs in USDC on any su
 
 ---
 
+## Repo structure
+
+```
+atlas-protocol/
+├── specs/                   # Protocol specifications (source of truth)
+├── whitepaper/              # Whitepaper + supporting research
+├── guides/                  # Integration + partnership guides
+├── packages/                # TypeScript SDK packages (pnpm workspace)
+│   ├── types/               # Shared types
+│   ├── agent-tools/         # Agent SDK (LangChain + MCP)
+│   └── server-sdk/          # Reference server implementation
+├── contracts/               # Solidity contracts (Foundry)
+└── examples/                # Integration quickstarts
+```
+
+### Quickstart
+
+```bash
+pnpm install
+pnpm build
+pnpm test
+```
+
+Node `>=22` and pnpm `>=9` are required. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full setup, package conventions, and spec-change process.
+
+---
+
 ## Documentation
 
 ### Whitepaper

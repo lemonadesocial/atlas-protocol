@@ -1,0 +1,10 @@
+# Default owner
+*                    @nooblemon-eth
+
+# Specs require careful review
+/specs/              @nooblemon-eth
+/whitepaper/         @nooblemon-eth
+
+# Code packages
+/packages/           @nooblemon-eth
+/contracts/          @nooblemon-eth
