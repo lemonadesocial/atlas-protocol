@@ -1,0 +1,45 @@
+{
+  "name": "@atlas/mpp",
+  "version": "0.1.0",
+  "description": "Standalone implementation of the Machine Payments Protocol (MPP) envelope: challenge / credential / receipt encode + sign + verify. Optional JWS wrapping layer for signed envelopes.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lemonadesocial/atlas-protocol.git",
+    "directory": "packages/mpp"
+  },
+  "keywords": [
+    "mpp",
+    "machine-payments",
+    "stripe",
+    "tempo",
+    "agent-commerce",
+    "atlas",
+    "http-402",
+    "jws"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "SPEC-NOTES.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "echo \"no lint configured\" && exit 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "jose": "^5.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.0.0"
+  }
+}
