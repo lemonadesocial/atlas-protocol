@@ -1,16 +1,53 @@
 {
   "name": "@atlas/agent-tools",
-  "version": "0.0.0",
-  "private": false,
+  "version": "0.1.0",
+  "description": "Agent-side ATLAS Protocol tooling for LangChain and MCP. Speak ATLAS from any agent runtime.",
   "license": "MIT",
-  "description": "Placeholder — implementation arrives in a follow-up.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/<owner>/atlas-protocol.git",
+    "directory": "packages/agent-tools"
+  },
+  "keywords": [
+    "atlas",
+    "atlas-protocol",
+    "agent",
+    "mcp",
+    "langchain",
+    "events",
+    "x402"
+  ],
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
-    "build": "echo 'Not yet implemented'",
-    "test": "echo 'Not yet implemented'",
-    "lint": "echo 'Not yet implemented'",
-    "typecheck": "echo 'Not yet implemented'"
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "echo \"no lint configured\" && exit 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "peerDependencies": {
+    "@langchain/core": ">=0.3.0",
+    "@modelcontextprotocol/sdk": ">=1.0.0",
+    "zod": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@langchain/core": { "optional": true },
+    "@modelcontextprotocol/sdk": { "optional": true }
+  },
+  "devDependencies": {
+    "@langchain/core": "^0.3.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.0.0",
+    "zod": "^4.0.0"
   }
 }
