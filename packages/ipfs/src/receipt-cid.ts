@@ -1,5 +1,5 @@
-import { canonicalize } from './canonicalize.js';
-import { generateCid } from './cid.js';
+import { canonicalize } from "./canonicalize.js";
+import { generateCid } from "./cid.js";
 
 /**
  * Minimal ATLAS purchase receipt shape used for CID generation. The full receipt

@@ -1,4 +1,4 @@
-import type { FetchLike, PinOptions, PinResult, Pinner } from './pinner.js';
+import type { FetchLike, PinOptions, PinResult, Pinner } from "./pinner.js";
 
 export interface FilebasePinnerConfig {
   apiToken: string;
@@ -7,7 +7,7 @@ export interface FilebasePinnerConfig {
   fetch?: FetchLike;
 }
 
-const DEFAULT_BASE_URL = 'https://api.filebase.io/v1/ipfs';
+const DEFAULT_BASE_URL = "https://api.filebase.io/v1/ipfs";
 
 /**
  * IPFS pinning service backed by Filebase, conforming to the IPFS Pinning
@@ -25,27 +25,27 @@ export class FilebasePinner implements Pinner {
   private readonly bucket: string | undefined;
 
   constructor(config: FilebasePinnerConfig) {
-    if (!config.apiToken) throw new Error('FilebasePinner: apiToken is required');
+    if (!config.apiToken) throw new Error("FilebasePinner: apiToken is required");
     this.fetchImpl = config.fetch ?? fetch;
-    this.baseUrl = (config.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, '');
+    this.baseUrl = (config.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
     this.apiToken = config.apiToken;
     this.bucket = config.bucket;
   }
 
   async pin(content: Uint8Array, opts: PinOptions = {}): Promise<PinResult> {
-    const filename = opts.name ?? 'atlas-payload.bin';
+    const filename = opts.name ?? "atlas-payload.bin";
     const form = new FormData();
-    form.append('file', new Blob([content], { type: 'application/octet-stream' }), filename);
+    form.append("file", new Blob([content], { type: "application/octet-stream" }), filename);
 
     const meta: Record<string, string> = { ...(opts.metadata ?? {}) };
-    if (this.bucket) meta['bucket'] = this.bucket;
+    if (this.bucket) meta["bucket"] = this.bucket;
     if (Object.keys(meta).length > 0) {
-      form.append('meta', JSON.stringify(meta));
+      form.append("meta", JSON.stringify(meta));
     }
-    form.append('name', filename);
+    form.append("name", filename);
 
     const res = await this.fetchImpl(`${this.baseUrl}/pins`, {
-      method: 'POST',
+      method: "POST",
       headers: { Authorization: `Bearer ${this.apiToken}` },
       body: form,
     });
@@ -62,7 +62,7 @@ export class FilebasePinner implements Pinner {
     };
     const cid = data.pin?.cid ?? data.cid;
     if (!cid) {
-      throw new Error('FilebasePinner.pin: response missing cid');
+      throw new Error("FilebasePinner.pin: response missing cid");
     }
     return { cid, size: data.info?.size ?? content.byteLength };
   }
@@ -72,18 +72,13 @@ export class FilebasePinner implements Pinner {
     if (!requestId) {
       throw new Error(`FilebasePinner.unpin: no pin request found for cid ${cid}`);
     }
-    const res = await this.fetchImpl(
-      `${this.baseUrl}/pins/${encodeURIComponent(requestId)}`,
-      {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${this.apiToken}` },
-      },
-    );
+    const res = await this.fetchImpl(`${this.baseUrl}/pins/${encodeURIComponent(requestId)}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${this.apiToken}` },
+    });
     if (!res.ok) {
       const text = await safeText(res);
-      throw new Error(
-        `FilebasePinner.unpin failed: ${res.status} ${res.statusText} ${text}`,
-      );
+      throw new Error(`FilebasePinner.unpin failed: ${res.status} ${res.statusText} ${text}`);
     }
   }
 
@@ -91,7 +86,7 @@ export class FilebasePinner implements Pinner {
     const data = await this.listByCid(cid);
     if (!data) return false;
     const results = data.results ?? [];
-    return results.some((r) => r.pin?.cid === cid && r.status === 'pinned');
+    return results.some((r) => r.pin?.cid === cid && r.status === "pinned");
   }
 
   private async findRequestId(cid: string): Promise<string | undefined> {
@@ -105,14 +100,12 @@ export class FilebasePinner implements Pinner {
   private async listByCid(cid: string): Promise<FilebaseListResponse | undefined> {
     const url = `${this.baseUrl}/pins?cid=${encodeURIComponent(cid)}`;
     const res = await this.fetchImpl(url, {
-      method: 'GET',
+      method: "GET",
       headers: { Authorization: `Bearer ${this.apiToken}` },
     });
     if (!res.ok) {
       const text = await safeText(res);
-      throw new Error(
-        `FilebasePinner.list failed: ${res.status} ${res.statusText} ${text}`,
-      );
+      throw new Error(`FilebasePinner.list failed: ${res.status} ${res.statusText} ${text}`);
     }
     return (await res.json()) as FilebaseListResponse;
   }
@@ -131,6 +124,6 @@ async function safeText(res: Response): Promise<string> {
   try {
     return await res.text();
   } catch {
-    return '';
+    return "";
   }
 }

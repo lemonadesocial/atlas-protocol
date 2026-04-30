@@ -21,27 +21,14 @@
  * are also supported.
  */
 
-import {
-  CompactSign,
-  compactVerify,
-  importJWK,
-  type JWK,
-  type KeyLike,
-} from 'jose';
+import { CompactSign, compactVerify, importJWK, type JWK, type KeyLike } from "jose";
 
-import { canonicalize, decode } from './envelope.js';
-import type {
-  MppEnvelope,
-  SignedMppEnvelope,
-} from './types/envelope.js';
-import type { MppPayload } from './types/payload.js';
-import type {
-  SigningAlg,
-  SigningKey,
-  VerificationKey,
-} from './types/signature.js';
+import { canonicalize, decode } from "./envelope.js";
+import type { MppEnvelope, SignedMppEnvelope } from "./types/envelope.js";
+import type { MppPayload } from "./types/payload.js";
+import type { SigningAlg, SigningKey, VerificationKey } from "./types/signature.js";
 
-const DEFAULT_ALG: SigningAlg = 'ES256';
+const DEFAULT_ALG: SigningAlg = "ES256";
 
 /**
  * Sign an envelope, producing a `SignedMppEnvelope` whose `jws` field is
@@ -60,7 +47,7 @@ export async function signEnvelope(
 
   const signer = new CompactSign(payloadBytes).setProtectedHeader({
     alg,
-    typ: 'mpp+jws',
+    typ: "mpp+jws",
     ...(kid !== undefined && { kid }),
   });
 
@@ -92,8 +79,7 @@ export async function verifyEnvelope(
     }
   | { valid: false; error: string }
 > {
-  const alg: SigningAlg =
-    publicKey.alg ?? (signed.alg as SigningAlg | undefined) ?? DEFAULT_ALG;
+  const alg: SigningAlg = publicKey.alg ?? (signed.alg as SigningAlg | undefined) ?? DEFAULT_ALG;
 
   let cryptoKey: KeyLike | Uint8Array;
   try {
@@ -136,8 +122,7 @@ export async function verifyEnvelope(
   if (expected !== actual) {
     return {
       valid: false,
-      error:
-        'payload was not JCS-canonical (key order or whitespace mismatch)',
+      error: "payload was not JCS-canonical (key order or whitespace mismatch)",
     };
   }
 
@@ -156,11 +141,8 @@ export async function verifyEnvelope(
 
 // --- internal helpers -----------------------------------------------------
 
-async function resolveSigningKey(
-  key: SigningKey,
-  alg: SigningAlg,
-): Promise<KeyLike | Uint8Array> {
-  if ('jwk' in key) {
+async function resolveSigningKey(key: SigningKey, alg: SigningAlg): Promise<KeyLike | Uint8Array> {
+  if ("jwk" in key) {
     const imported = await importJWK(key.jwk as JWK, alg);
     // `importJWK` may return either a `KeyLike` or a `Uint8Array` (for HS256).
     return imported as KeyLike | Uint8Array;
@@ -172,7 +154,7 @@ async function resolveVerificationKey(
   key: VerificationKey,
   alg: SigningAlg,
 ): Promise<KeyLike | Uint8Array> {
-  if ('jwk' in key) {
+  if ("jwk" in key) {
     const imported = await importJWK(key.jwk as JWK, alg);
     return imported as KeyLike | Uint8Array;
   }

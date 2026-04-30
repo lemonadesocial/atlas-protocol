@@ -51,9 +51,9 @@ export interface AtlasToolsConfig {
 }
 
 /** Resolves a config to its concrete defaults. */
-export function resolveConfig(
-  config: AtlasToolsConfig,
-): Required<Pick<AtlasToolsConfig, 'registryUrl' | 'backendUrl' | 'agentId' | 'apiVersion'>> & {
+export function resolveConfig(config: AtlasToolsConfig): Required<
+  Pick<AtlasToolsConfig, "registryUrl" | "backendUrl" | "agentId" | "apiVersion">
+> & {
   logger: Logger;
   apiKey: string | undefined;
 } {
@@ -61,7 +61,7 @@ export function resolveConfig(
     registryUrl: config.registryUrl,
     backendUrl: config.backendUrl,
     agentId: config.agentId,
-    apiVersion: config.apiVersion ?? '1.0',
+    apiVersion: config.apiVersion ?? "1.0",
     logger: config.logger ?? noopLogger,
     apiKey: config.apiKey,
   };

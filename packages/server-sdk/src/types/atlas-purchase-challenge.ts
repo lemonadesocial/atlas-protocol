@@ -24,14 +24,14 @@ export interface AtlasPaymentMethod {
 }
 
 export type AtlasPaymentMethodType =
-  | 'tempo_usdc'
-  | 'base_usdc'
-  | 'arbitrum_usdc'
-  | 'polygon_usdc'
-  | 'optimism_usdc'
-  | 'zksync_usdc'
-  | 'solana_usdc'
-  | 'stripe_spt';
+  | "tempo_usdc"
+  | "base_usdc"
+  | "arbitrum_usdc"
+  | "polygon_usdc"
+  | "optimism_usdc"
+  | "zksync_usdc"
+  | "solana_usdc"
+  | "stripe_spt";
 
 /**
  * Proof a buyer submits after completing payment off-band.

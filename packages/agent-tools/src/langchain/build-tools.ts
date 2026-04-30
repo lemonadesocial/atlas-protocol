@@ -16,23 +16,23 @@
  * UI-card metadata) without coupling this package to any specific framework.
  */
 
-import { DynamicStructuredTool } from '@langchain/core/tools';
-import { createHash } from 'node:crypto';
-import { z } from 'zod';
+import { DynamicStructuredTool } from "@langchain/core/tools";
+import { createHash } from "node:crypto";
+import { z } from "zod";
 
-import type { AtlasToolsConfig } from '../config.js';
-import { createAtlasHttpClient } from '../http-client.js';
+import type { AtlasToolsConfig } from "../config.js";
+import { createAtlasHttpClient } from "../http-client.js";
 import type {
   AtlasChallengeResponse,
   AtlasCheckoutResponse,
   AtlasFreeTicketResponse,
-} from '../types/atlas.js';
+} from "../types/atlas.js";
 
 /** Hook signature for surfacing tool results into caller-owned state. */
 export type AtlasStateHook<TState> = (
   state: TState,
   event: {
-    tool: 'atlas_search' | 'atlas_compare_tickets' | 'atlas_purchase' | 'atlas_get_receipt';
+    tool: "atlas_search" | "atlas_compare_tickets" | "atlas_purchase" | "atlas_get_receipt";
     data: unknown;
     cards?: { type: string; items: unknown[] };
   },
@@ -67,7 +67,7 @@ export function buildAtlasLangChainTools<TState = unknown>(
   const http = createAtlasHttpClient(config);
 
   function emit(
-    tool: 'atlas_search' | 'atlas_compare_tickets' | 'atlas_purchase' | 'atlas_get_receipt',
+    tool: "atlas_search" | "atlas_compare_tickets" | "atlas_purchase" | "atlas_get_receipt",
     data: unknown,
     cards?: { type: string; items: unknown[] },
   ): void {
@@ -83,37 +83,37 @@ export function buildAtlasLangChainTools<TState = unknown>(
 
   tools.push(
     new DynamicStructuredTool({
-      name: 'atlas_search',
+      name: "atlas_search",
       description:
-        'Search for events across federated sources via Atlas Protocol. Returns events with ticket info from multiple platforms.',
+        "Search for events across federated sources via Atlas Protocol. Returns events with ticket info from multiple platforms.",
       schema: z.object({
-        query: z.string().optional().describe('Free-text search query'),
-        city: z.string().optional().describe('City name to filter by'),
-        lat: z.number().optional().describe('Latitude for geo search'),
-        lng: z.number().optional().describe('Longitude for geo search'),
-        radius_km: z.number().optional().describe('Radius in km for geo search'),
-        start_after: z.string().optional().describe('ISO date, events starting after'),
-        start_before: z.string().optional().describe('ISO date, events starting before'),
-        cursor: z.string().optional().describe('Pagination cursor'),
-        limit: z.number().optional().describe('Max results (default 20)'),
+        query: z.string().optional().describe("Free-text search query"),
+        city: z.string().optional().describe("City name to filter by"),
+        lat: z.number().optional().describe("Latitude for geo search"),
+        lng: z.number().optional().describe("Longitude for geo search"),
+        radius_km: z.number().optional().describe("Radius in km for geo search"),
+        start_after: z.string().optional().describe("ISO date, events starting after"),
+        start_before: z.string().optional().describe("ISO date, events starting before"),
+        cursor: z.string().optional().describe("Pagination cursor"),
+        limit: z.number().optional().describe("Max results (default 20)"),
       }),
       func: async (input) => {
         const searchQuery: Record<string, string | number | boolean | undefined> = {};
-        if (input.query) searchQuery['q'] = input.query;
-        if (input.city) searchQuery['city'] = input.city;
-        if (input.lat !== undefined) searchQuery['lat'] = input.lat;
-        if (input.lng !== undefined) searchQuery['lng'] = input.lng;
-        if (input.radius_km !== undefined) searchQuery['radius_km'] = input.radius_km;
-        if (input.start_after) searchQuery['start_after'] = input.start_after;
-        if (input.start_before) searchQuery['start_before'] = input.start_before;
-        if (input.cursor) searchQuery['cursor'] = input.cursor;
-        if (input.limit !== undefined) searchQuery['limit'] = input.limit;
+        if (input.query) searchQuery["q"] = input.query;
+        if (input.city) searchQuery["city"] = input.city;
+        if (input.lat !== undefined) searchQuery["lat"] = input.lat;
+        if (input.lng !== undefined) searchQuery["lng"] = input.lng;
+        if (input.radius_km !== undefined) searchQuery["radius_km"] = input.radius_km;
+        if (input.start_after) searchQuery["start_after"] = input.start_after;
+        if (input.start_before) searchQuery["start_before"] = input.start_before;
+        if (input.cursor) searchQuery["cursor"] = input.cursor;
+        if (input.limit !== undefined) searchQuery["limit"] = input.limit;
 
         const response = await http.registrySearch(searchQuery);
         const data = response.data as { items?: unknown[] };
 
-        emit('atlas_search', response.data, {
-          type: 'atlas_event',
+        emit("atlas_search", response.data, {
+          type: "atlas_event",
           items: data?.items ?? [],
         });
 
@@ -125,36 +125,36 @@ export function buildAtlasLangChainTools<TState = unknown>(
 
   tools.push(
     new DynamicStructuredTool({
-      name: 'atlas_compare_tickets',
-      description: 'Compare ticket prices and availability across 2-5 events fetched in parallel.',
+      name: "atlas_compare_tickets",
+      description: "Compare ticket prices and availability across 2-5 events fetched in parallel.",
       schema: z.object({
         event_ids: z
           .array(z.string().regex(/^[a-zA-Z0-9_-]+$/))
           .min(2)
           .max(5)
-          .describe('Array of 2-5 Atlas event IDs to compare'),
+          .describe("Array of 2-5 Atlas event IDs to compare"),
       }),
       func: async (input) => {
         const results = await Promise.allSettled(
           input.event_ids.map(async (eventId: string) => {
             const response = await http.request({
-              method: 'GET',
+              method: "GET",
               path: `/atlas/v1/events/${eventId}`,
-              target: 'registry',
+              target: "registry",
             });
             return response.data;
           }),
         );
 
         const events = results.map((result, index) => {
-          if (result.status === 'fulfilled') return result.value;
-          const id = input.event_ids[index] ?? 'unknown';
+          if (result.status === "fulfilled") return result.value;
+          const id = input.event_ids[index] ?? "unknown";
           const reason = result.reason as { message?: string } | undefined;
-          return { id, error: reason?.message ?? 'Failed to fetch' };
+          return { id, error: reason?.message ?? "Failed to fetch" };
         });
 
-        emit('atlas_compare_tickets', events, {
-          type: 'atlas_comparison',
+        emit("atlas_compare_tickets", events, {
+          type: "atlas_comparison",
           items: events,
         });
 
@@ -166,41 +166,37 @@ export function buildAtlasLangChainTools<TState = unknown>(
 
   tools.push(
     new DynamicStructuredTool({
-      name: 'atlas_purchase',
+      name: "atlas_purchase",
       description:
-        'Purchase tickets for an Atlas event. Returns checkout URL for paid events or confirms free ticket acquisition.',
+        "Purchase tickets for an Atlas event. Returns checkout URL for paid events or confirms free ticket acquisition.",
       schema: z.object({
         event_id: z
           .string()
           .regex(/^[a-zA-Z0-9_-]+$/)
-          .describe('Atlas event ID'),
+          .describe("Atlas event ID"),
         ticket_type_id: z
           .string()
           .regex(/^[a-zA-Z0-9_-]+$/)
-          .describe('Ticket type ID'),
-        quantity: z.number().min(1).max(10).describe('Number of tickets (1-10)'),
+          .describe("Ticket type ID"),
+        quantity: z.number().min(1).max(10).describe("Number of tickets (1-10)"),
       }),
       func: async (input) => {
         const authHeader = getAuthHeader?.();
-        if (!authHeader || typeof authHeader !== 'string') {
-          throw new Error('Authentication required to purchase tickets');
+        if (!authHeader || typeof authHeader !== "string") {
+          throw new Error("Authentication required to purchase tickets");
         }
 
-        const idempotencyKey = createHash('sha256')
-          .update(
-            `atlas:${input.event_id}:${input.ticket_type_id}:${input.quantity}:${authHeader}`,
-          )
-          .digest('hex');
+        const idempotencyKey = createHash("sha256")
+          .update(`atlas:${input.event_id}:${input.ticket_type_id}:${input.quantity}:${authHeader}`)
+          .digest("hex");
 
-        const response = await http.request<
-          AtlasChallengeResponse | AtlasFreeTicketResponse
-        >({
-          method: 'POST',
+        const response = await http.request<AtlasChallengeResponse | AtlasFreeTicketResponse>({
+          method: "POST",
           path: `/atlas/v1/events/${input.event_id}/purchase`,
-          target: 'backend',
+          target: "backend",
           headers: {
             Authorization: authHeader,
-            'Idempotency-Key': idempotencyKey,
+            "Idempotency-Key": idempotencyKey,
           },
           body: {
             ticket_type_id: input.ticket_type_id,
@@ -210,41 +206,41 @@ export function buildAtlasLangChainTools<TState = unknown>(
 
         if (
           response.status === 200 &&
-          (response.data as AtlasFreeTicketResponse).type === 'free_ticket_redirect'
+          (response.data as AtlasFreeTicketResponse).type === "free_ticket_redirect"
         ) {
-          emit('atlas_purchase', response.data);
+          emit("atlas_purchase", response.data);
           return JSON.stringify({
-            status: 'completed',
+            status: "completed",
             redirect_url: (response.data as AtlasFreeTicketResponse).redirect_url,
-            message: 'Tickets acquired successfully (free event)',
+            message: "Tickets acquired successfully (free event)",
           });
         }
 
         if (response.status === 402) {
-          const challenge = (response.data as AtlasChallengeResponse)['atlas:challenge'];
+          const challenge = (response.data as AtlasChallengeResponse)["atlas:challenge"];
           const holdId = challenge.ticket_hold_id;
           const checkout = await http.request<AtlasCheckoutResponse>({
-            method: 'POST',
+            method: "POST",
             path: `/atlas/v1/holds/${holdId}/checkout`,
-            target: 'backend',
+            target: "backend",
             headers: {
               Authorization: authHeader,
-              'Idempotency-Key': idempotencyKey,
+              "Idempotency-Key": idempotencyKey,
             },
           });
 
           const result = {
-            status: 'pending_payment',
+            status: "pending_payment",
             hold_id: holdId,
             checkout_url: checkout.data.checkout_url,
             expires_at: checkout.data.expires_at,
           };
 
-          emit('atlas_purchase', result);
+          emit("atlas_purchase", result);
           return JSON.stringify(result);
         }
 
-        emit('atlas_purchase', response.data);
+        emit("atlas_purchase", response.data);
         return JSON.stringify(response.data);
       },
       returnDirect: false,
@@ -253,27 +249,27 @@ export function buildAtlasLangChainTools<TState = unknown>(
 
   tools.push(
     new DynamicStructuredTool({
-      name: 'atlas_get_receipt',
+      name: "atlas_get_receipt",
       description:
-        'Check the status of a ticket purchase by hold ID. Returns pending, completed, or expired.',
+        "Check the status of a ticket purchase by hold ID. Returns pending, completed, or expired.",
       schema: z.object({
-        hold_id: z.string().describe('Hold ID from a previous purchase'),
+        hold_id: z.string().describe("Hold ID from a previous purchase"),
       }),
       func: async (input) => {
         const authHeader = getAuthHeader?.();
-        if (!authHeader || typeof authHeader !== 'string') {
-          throw new Error('Authentication required to check receipt');
+        if (!authHeader || typeof authHeader !== "string") {
+          throw new Error("Authentication required to check receipt");
         }
 
         const response = await http.request({
-          method: 'GET',
+          method: "GET",
           path: `/atlas/v1/receipts/by-hold/${input.hold_id}`,
-          target: 'backend',
+          target: "backend",
           headers: { Authorization: authHeader },
         });
 
-        emit('atlas_get_receipt', response.data, {
-          type: 'atlas_receipt',
+        emit("atlas_get_receipt", response.data, {
+          type: "atlas_receipt",
           items: [response.data],
         });
 

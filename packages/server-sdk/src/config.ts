@@ -1,4 +1,4 @@
-import type { AtlasPaymentMethodType, AtlasSigningKeyJwk } from './types/index.js';
+import type { AtlasPaymentMethodType, AtlasSigningKeyJwk } from "./types/index.js";
 
 /**
  * Pluggable logger interface. Defaults to a no-op so consumers may run the
@@ -26,12 +26,10 @@ export const noopLogger: Logger = {
  * For EVM USDC chains, supply { type, receiverAddress, rpcUrl?, chainId? }.
  * For Stripe SPT, supply { type: 'stripe_spt', stripeSecretKey }.
  */
-export type PaymentMethodConfig =
-  | EvmUsdcMethodConfig
-  | StripeSptMethodConfig;
+export type PaymentMethodConfig = EvmUsdcMethodConfig | StripeSptMethodConfig;
 
 export interface EvmUsdcMethodConfig {
-  type: Exclude<AtlasPaymentMethodType, 'stripe_spt' | 'solana_usdc'>;
+  type: Exclude<AtlasPaymentMethodType, "stripe_spt" | "solana_usdc">;
   /** Receiver address that USDC must be transferred to. */
   receiverAddress: string;
   /** Optional override for the chain RPC URL. */
@@ -43,7 +41,7 @@ export interface EvmUsdcMethodConfig {
 }
 
 export interface StripeSptMethodConfig {
-  type: 'stripe_spt';
+  type: "stripe_spt";
   /** Stripe secret key used to retrieve PaymentIntents. */
   stripeSecretKey: string;
   /** Optional Stripe API version override. */
@@ -86,6 +84,6 @@ export interface ServerSdkConfig {
   logger?: Logger;
 }
 
-export function resolveLogger(config: Pick<ServerSdkConfig, 'logger'>): Logger {
+export function resolveLogger(config: Pick<ServerSdkConfig, "logger">): Logger {
   return config.logger ?? noopLogger;
 }

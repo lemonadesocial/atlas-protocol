@@ -10,13 +10,13 @@
  * handle the payment challenge. Signing payments is out of scope.
  */
 
-import { resolveConfig, type AtlasToolsConfig, type Logger } from './config.js';
+import { resolveConfig, type AtlasToolsConfig, type Logger } from "./config.js";
 
 /** Options accepted by {@link createAtlasHttpClient} factory's request method. */
 export interface AtlasRequestOptions {
-  method?: 'GET' | 'POST';
+  method?: "GET" | "POST";
   path: string;
-  target: 'registry' | 'backend';
+  target: "registry" | "backend";
   headers?: Record<string, string>;
   body?: unknown;
   query?: Record<string, string | number | boolean | undefined>;
@@ -38,18 +38,12 @@ export interface AtlasHttpClient {
   ): Promise<AtlasResponse<T>>;
 }
 
-function buildQueryString(
-  params: Record<string, string | number | boolean | undefined>,
-): string {
+function buildQueryString(params: Record<string, string | number | boolean | undefined>): string {
   const entries = Object.entries(params).filter(([, v]) => v !== undefined);
-  if (entries.length === 0) return '';
+  if (entries.length === 0) return "";
   return (
-    '?' +
-    entries
-      .map(
-        ([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`,
-      )
-      .join('&')
+    "?" +
+    entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join("&")
   );
 }
 
@@ -60,11 +54,9 @@ export function createAtlasHttpClient(config: AtlasToolsConfig): AtlasHttpClient
   const resolved = resolveConfig(config);
   const logger: Logger = resolved.logger;
 
-  async function request<T>(
-    options: AtlasRequestOptions,
-  ): Promise<AtlasResponse<T>> {
+  async function request<T>(options: AtlasRequestOptions): Promise<AtlasResponse<T>> {
     const {
-      method = 'GET',
+      method = "GET",
       path,
       target,
       headers: extraHeaders = {},
@@ -73,22 +65,21 @@ export function createAtlasHttpClient(config: AtlasToolsConfig): AtlasHttpClient
       timeoutMs,
     } = options;
 
-    const baseUrl =
-      target === 'registry' ? resolved.registryUrl : resolved.backendUrl;
+    const baseUrl = target === "registry" ? resolved.registryUrl : resolved.backendUrl;
     if (!baseUrl) throw new Error(`Atlas ${target} URL not configured`);
 
-    const qs = query ? buildQueryString(query) : '';
+    const qs = query ? buildQueryString(query) : "";
     const url = `${baseUrl}${path}${qs}`;
-    const timeout = timeoutMs ?? (target === 'registry' ? 10_000 : 5_000);
+    const timeout = timeoutMs ?? (target === "registry" ? 10_000 : 5_000);
 
     const headers: Record<string, string> = {
-      'Atlas-Agent-Id': resolved.agentId,
-      'Atlas-Version': resolved.apiVersion,
-      'Content-Type': 'application/json',
+      "Atlas-Agent-Id": resolved.agentId,
+      "Atlas-Version": resolved.apiVersion,
+      "Content-Type": "application/json",
       ...extraHeaders,
     };
-    if (resolved.apiKey && !headers['Authorization'] && !headers['authorization']) {
-      headers['Authorization'] = `Bearer ${resolved.apiKey}`;
+    if (resolved.apiKey && !headers["Authorization"] && !headers["authorization"]) {
+      headers["Authorization"] = `Bearer ${resolved.apiKey}`;
     }
 
     const fetchOptions: RequestInit = {
@@ -96,7 +87,7 @@ export function createAtlasHttpClient(config: AtlasToolsConfig): AtlasHttpClient
       headers,
       signal: AbortSignal.timeout(timeout),
     };
-    if (body && method === 'POST') fetchOptions.body = JSON.stringify(body);
+    if (body && method === "POST") fetchOptions.body = JSON.stringify(body);
 
     async function doFetch(): Promise<AtlasResponse<T>> {
       const response = await fetch(url, fetchOptions);
@@ -131,7 +122,7 @@ export function createAtlasHttpClient(config: AtlasToolsConfig): AtlasHttpClient
       // Retry once on transient errors (5XX, network timeouts) but never on
       // 4XX client errors.
       if (error instanceof Error && !/returned 4\d{2}:/.test(error.message)) {
-        logger.warn('Atlas request failed, retrying once', {
+        logger.warn("Atlas request failed, retrying once", {
           error: error.message,
           url,
         });
@@ -147,14 +138,14 @@ export function createAtlasHttpClient(config: AtlasToolsConfig): AtlasHttpClient
   ): Promise<AtlasResponse<T>> {
     try {
       return await request<T>({
-        method: 'GET',
-        path: '/atlas/v1/search',
-        target: 'registry',
+        method: "GET",
+        path: "/atlas/v1/search",
+        target: "registry",
         query,
         timeoutMs: 10_000,
       });
     } catch (error) {
-      logger.warn('Atlas Registry search failed, returning empty results', {
+      logger.warn("Atlas Registry search failed, returning empty results", {
         error: (error as Error).message,
       });
       return {

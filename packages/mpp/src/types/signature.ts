@@ -1,4 +1,4 @@
-import type { JWK, KeyLike } from 'jose';
+import type { JWK, KeyLike } from "jose";
 
 /**
  * Supported JWS signing algorithms for the @atlasprotocol/mpp envelope.
@@ -8,7 +8,7 @@ import type { JWK, KeyLike } from 'jose';
  * - "RS256"  — RSASSA-PKCS1-v1_5 with SHA-256 (RFC 7518 §3.3)
  * - "HS256"  — HMAC SHA-256 (symmetric; RFC 7518 §3.2)
  */
-export type SigningAlg = 'ES256' | 'EdDSA' | 'RS256' | 'HS256';
+export type SigningAlg = "ES256" | "EdDSA" | "RS256" | "HS256";
 
 /**
  * A signing key. Either a runtime `KeyLike` (CryptoKey / KeyObject), a
@@ -31,20 +31,13 @@ export type VerificationKey =
 /**
  * Discriminator helpers — true if the key is in raw bytes form.
  */
-export function isRawBytesKey<T extends { key?: unknown }>(
-  k: T,
-): k is T & { key: Uint8Array } {
-  return (
-    'key' in k &&
-    typeof k.key === 'object' &&
-    k.key !== null &&
-    k.key instanceof Uint8Array
-  );
+export function isRawBytesKey<T extends { key?: unknown }>(k: T): k is T & { key: Uint8Array } {
+  return "key" in k && typeof k.key === "object" && k.key !== null && k.key instanceof Uint8Array;
 }
 
 /**
  * Discriminator helper — true if the key is in JWK form.
  */
 export function isJwkKey<T>(k: T): k is T & { jwk: JWK } {
-  return typeof k === 'object' && k !== null && 'jwk' in k;
+  return typeof k === "object" && k !== null && "jwk" in k;
 }

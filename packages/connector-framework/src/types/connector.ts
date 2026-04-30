@@ -1,7 +1,7 @@
-import type { AtlasEvent, AtlasTicketType } from '@atlasprotocol/server-sdk';
+import type { AtlasEvent, AtlasTicketType } from "@atlasprotocol/server-sdk";
 
-import type { AuthContext } from './auth.js';
-import type { SearchParams } from './search.js';
+import type { AuthContext } from "./auth.js";
+import type { SearchParams } from "./search.js";
 
 /**
  * Capability descriptor advertised by a connector. Hosts use this to
@@ -24,7 +24,7 @@ export interface ConnectorCapabilities {
 export interface Connector {
   readonly id: string;
   readonly name: string;
-  readonly authMethod: 'oauth2' | 'apikey';
+  readonly authMethod: "oauth2" | "apikey";
   readonly capabilities: ConnectorCapabilities;
   search(params: SearchParams, auth: AuthContext): Promise<AtlasEvent[]>;
   getEvent(externalId: string, auth: AuthContext): Promise<AtlasEvent | null>;

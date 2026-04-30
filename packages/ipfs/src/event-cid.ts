@@ -1,7 +1,7 @@
-import type { AtlasEvent } from '@atlasprotocol/server-sdk';
+import type { AtlasEvent } from "@atlasprotocol/server-sdk";
 
-import { canonicalize } from './canonicalize.js';
-import { generateCid } from './cid.js';
+import { canonicalize } from "./canonicalize.js";
+import { generateCid } from "./cid.js";
 
 /**
  * Compute the deterministic content-addressed identifier (CIDv1, raw, sha256)

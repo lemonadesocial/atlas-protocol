@@ -6,11 +6,15 @@
   "description": "Placeholder — implementation arrives in a follow-up.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "echo 'Not yet implemented'",
     "test": "echo 'Not yet implemented'",
-    "lint": "echo 'Not yet implemented'",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
     "typecheck": "echo 'Not yet implemented'"
   }
 }

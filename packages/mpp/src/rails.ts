@@ -9,12 +9,12 @@
  * https://mpp.dev/protocol/challenges (accessed 2026-04-30).
  */
 export const SUPPORTED_RAILS = [
-  'usdc-base',
-  'usdc-tempo',
-  'usdc-arbitrum',
-  'usdc-polygon',
-  'usdc-optimism',
-  'stripe-spt',
+  "usdc-base",
+  "usdc-tempo",
+  "usdc-arbitrum",
+  "usdc-polygon",
+  "usdc-optimism",
+  "stripe-spt",
 ] as const;
 
 export type Rail = (typeof SUPPORTED_RAILS)[number];

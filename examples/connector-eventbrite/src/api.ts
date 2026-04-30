@@ -2,9 +2,9 @@ import {
   AuthExpiredError,
   ConnectorError,
   RateLimitError,
-} from '@atlasprotocol/connector-framework';
+} from "@atlasprotocol/connector-framework";
 
-export const EVENTBRITE_API_BASE = 'https://www.eventbriteapi.com/v3';
+export const EVENTBRITE_API_BASE = "https://www.eventbriteapi.com/v3";
 
 /**
  * Subset of Eventbrite REST shapes we consume. Only fields actually
@@ -46,7 +46,7 @@ export interface EventbriteOrganizer {
   url?: string;
 }
 
-export type EventbriteStatus = 'live' | 'started' | 'ended' | 'completed' | 'canceled' | 'draft';
+export type EventbriteStatus = "live" | "started" | "ended" | "completed" | "canceled" | "draft";
 
 export interface EventbriteEvent {
   id: string;
@@ -89,7 +89,7 @@ export interface EventbriteTicketClass {
   sales_start?: string | null;
   sales_end?: string | null;
   hidden?: boolean;
-  on_sale_status?: 'AVAILABLE' | 'SOLD_OUT' | 'NOT_YET_ON_SALE' | 'SALES_ENDED' | 'UNAVAILABLE';
+  on_sale_status?: "AVAILABLE" | "SOLD_OUT" | "NOT_YET_ON_SALE" | "SALES_ENDED" | "UNAVAILABLE";
 }
 
 export interface EventbritePagedEvents {
@@ -106,7 +106,7 @@ export interface EventbritePagedEvents {
 
 export interface EventbritePagedTicketClasses {
   ticket_classes: EventbriteTicketClass[];
-  pagination?: EventbritePagedEvents['pagination'];
+  pagination?: EventbritePagedEvents["pagination"];
 }
 
 export interface EventbriteApiClientOptions {
@@ -139,13 +139,13 @@ export class EventbriteApiClient {
     accessToken: string,
     query: Record<string, string | number | undefined>,
   ): Promise<EventbritePagedEvents> {
-    const url = this.buildUrl('/users/me/events/', query);
+    const url = this.buildUrl("/users/me/events/", query);
     return this.request<EventbritePagedEvents>(url, accessToken);
   }
 
   async getEvent(accessToken: string, eventId: string): Promise<EventbriteEvent | null> {
     const url = this.buildUrl(`/events/${encodeURIComponent(eventId)}/`, {
-      expand: 'venue,organizer,logo',
+      expand: "venue,organizer,logo",
     });
     return this.requestOrNull<EventbriteEvent>(url, accessToken);
   }
@@ -159,9 +159,9 @@ export class EventbriteApiClient {
   }
 
   private buildUrl(path: string, query: Record<string, string | number | undefined>): string {
-    const url = new URL(this.baseUrl.replace(/\/$/, '') + path);
+    const url = new URL(this.baseUrl.replace(/\/$/, "") + path);
     for (const [k, v] of Object.entries(query)) {
-      if (v !== undefined && v !== null && v !== '') {
+      if (v !== undefined && v !== null && v !== "") {
         url.searchParams.set(k, String(v));
       }
     }
@@ -170,10 +170,10 @@ export class EventbriteApiClient {
 
   private async request<T>(url: string, accessToken: string): Promise<T> {
     const res = await this.fetchImpl(url, {
-      method: 'GET',
+      method: "GET",
       headers: {
         authorization: `Bearer ${accessToken}`,
-        accept: 'application/json',
+        accept: "application/json",
       },
     });
     await this.assertOk(res);
@@ -182,10 +182,10 @@ export class EventbriteApiClient {
 
   private async requestOrNull<T>(url: string, accessToken: string): Promise<T | null> {
     const res = await this.fetchImpl(url, {
-      method: 'GET',
+      method: "GET",
       headers: {
         authorization: `Bearer ${accessToken}`,
-        accept: 'application/json',
+        accept: "application/json",
       },
     });
     if (res.status === 404) return null;
@@ -197,19 +197,16 @@ export class EventbriteApiClient {
     if (res.ok) return;
     if (res.status === 401 || res.status === 403) {
       throw new AuthExpiredError(
-        `Eventbrite returned ${res.status} ${res.statusText || ''}`.trim(),
+        `Eventbrite returned ${res.status} ${res.statusText || ""}`.trim(),
       );
     }
     if (res.status === 429) {
-      const retryAfter = parseRetryAfter(res.headers.get('retry-after'));
-      throw new RateLimitError(
-        'Eventbrite rate limit exceeded',
-        retryAfter,
-      );
+      const retryAfter = parseRetryAfter(res.headers.get("retry-after"));
+      throw new RateLimitError("Eventbrite rate limit exceeded", retryAfter);
     }
     const body = await safeRead(res);
     throw new ConnectorError(
-      `Eventbrite request failed (${res.status} ${res.statusText || ''}): ${body}`.trim(),
+      `Eventbrite request failed (${res.status} ${res.statusText || ""}): ${body}`.trim(),
     );
   }
 }
@@ -231,6 +228,6 @@ async function safeRead(res: Response): Promise<string> {
   try {
     return (await res.text()).slice(0, 500);
   } catch {
-    return '<unreadable body>';
+    return "<unreadable body>";
   }
 }

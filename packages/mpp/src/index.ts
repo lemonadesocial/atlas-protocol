@@ -10,16 +10,16 @@ export {
   deserialize,
   canonicalize,
   MPP_PROTOCOL_VERSION,
-} from './envelope.js';
+} from "./envelope.js";
 
-export { signEnvelope, verifyEnvelope } from './signer.js';
+export { signEnvelope, verifyEnvelope } from "./signer.js";
 
 export {
   SUPPORTED_RAILS,
   isSupportedRail,
   isValidMethodIdentifier,
   METHOD_IDENTIFIER_PATTERN,
-} from './rails.js';
+} from "./rails.js";
 
 export type {
   Rail,
@@ -34,4 +34,4 @@ export type {
   SigningAlg,
   SigningKey,
   VerificationKey,
-} from './types/index.js';
+} from "./types/index.js";

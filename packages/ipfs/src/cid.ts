@@ -1,6 +1,6 @@
-import { CID } from 'multiformats/cid';
-import { sha256 } from 'multiformats/hashes/sha2';
-import * as raw from 'multiformats/codecs/raw';
+import { CID } from "multiformats/cid";
+import { sha256 } from "multiformats/hashes/sha2";
+import * as raw from "multiformats/codecs/raw";
 
 /**
  * Compute a CIDv1 (raw codec, sha256, base32 lowercase) for the given canonical

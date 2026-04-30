@@ -23,7 +23,5 @@
       "package-name": "@atlasprotocol/connector-framework"
     }
   },
-  "plugins": [
-    { "type": "node-workspace", "updatePeerDependencies": true }
-  ]
+  "plugins": [{ "type": "node-workspace", "updatePeerDependencies": true }]
 }

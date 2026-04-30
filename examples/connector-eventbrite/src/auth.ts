@@ -9,8 +9,8 @@
  * Endpoint reference: https://www.eventbrite.com/platform/api#/introduction/authentication
  */
 
-const AUTHORIZE_URL = 'https://www.eventbrite.com/oauth/authorize';
-const TOKEN_URL = 'https://www.eventbrite.com/oauth/token';
+const AUTHORIZE_URL = "https://www.eventbrite.com/oauth/authorize";
+const TOKEN_URL = "https://www.eventbrite.com/oauth/token";
 
 export interface OAuthClientConfig {
   clientId: string;
@@ -21,7 +21,7 @@ export interface OAuthClientConfig {
 export interface PkcePair {
   codeVerifier: string;
   codeChallenge: string;
-  codeChallengeMethod: 'S256';
+  codeChallengeMethod: "S256";
 }
 
 export interface OAuthTokenResponse {
@@ -48,16 +48,14 @@ export function generateCodeVerifier(
  */
 export async function generateCodeChallenge(verifier: string): Promise<string> {
   const data = new TextEncoder().encode(verifier);
-  const digest = await crypto.subtle.digest('SHA-256', data);
+  const digest = await crypto.subtle.digest("SHA-256", data);
   return base64UrlEncode(new Uint8Array(digest));
 }
 
-export async function generatePkcePair(
-  random?: (length: number) => Uint8Array,
-): Promise<PkcePair> {
+export async function generatePkcePair(random?: (length: number) => Uint8Array): Promise<PkcePair> {
   const codeVerifier = generateCodeVerifier(random);
   const codeChallenge = await generateCodeChallenge(codeVerifier);
-  return { codeVerifier, codeChallenge, codeChallengeMethod: 'S256' };
+  return { codeVerifier, codeChallenge, codeChallengeMethod: "S256" };
 }
 
 /**
@@ -70,14 +68,14 @@ export function buildAuthorizeUrl(args: {
   scope?: string;
 }): string {
   const params = new URLSearchParams({
-    response_type: 'code',
+    response_type: "code",
     client_id: args.client.clientId,
     redirect_uri: args.client.redirectUri,
     state: args.state,
     code_challenge: args.codeChallenge,
-    code_challenge_method: 'S256',
+    code_challenge_method: "S256",
   });
-  if (args.scope) params.set('scope', args.scope);
+  if (args.scope) params.set("scope", args.scope);
   return `${AUTHORIZE_URL}?${params.toString()}`;
 }
 
@@ -94,7 +92,7 @@ export async function exchangeCodeForToken(args: {
 }): Promise<OAuthTokenResponse> {
   const fetchImpl = args.fetchImpl ?? fetch;
   const body = new URLSearchParams({
-    grant_type: 'authorization_code',
+    grant_type: "authorization_code",
     client_id: args.client.clientId,
     client_secret: args.client.clientSecret,
     redirect_uri: args.client.redirectUri,
@@ -103,8 +101,8 @@ export async function exchangeCodeForToken(args: {
   });
 
   const res = await fetchImpl(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });
 
@@ -125,14 +123,14 @@ export async function refreshAccessToken(args: {
 }): Promise<OAuthTokenResponse> {
   const fetchImpl = args.fetchImpl ?? fetch;
   const body = new URLSearchParams({
-    grant_type: 'refresh_token',
+    grant_type: "refresh_token",
     client_id: args.client.clientId,
     client_secret: args.client.clientSecret,
     refresh_token: args.refreshToken,
   });
   const res = await fetchImpl(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });
   if (!res.ok) {
@@ -150,15 +148,15 @@ function defaultRandom(length: number): Uint8Array {
 
 function base64UrlEncode(bytes: Uint8Array): string {
   // btoa expects a binary string. Iterating as char codes is safe for raw bytes.
-  let binary = '';
+  let binary = "";
   for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 async function safeReadText(res: Response): Promise<string> {
   try {
     return await res.text();
   } catch {
-    return '<unreadable body>';
+    return "<unreadable body>";
   }
 }

@@ -1,17 +1,16 @@
-import { createPublicClient, http } from 'viem';
-import { arbitrum, base, optimism, polygon } from 'viem/chains';
-import type { Chain, PublicClient, Transport } from 'viem';
+import { createPublicClient, http } from "viem";
+import { arbitrum, base, optimism, polygon } from "viem/chains";
+import type { Chain, PublicClient, Transport } from "viem";
 
-import { resolveLogger, type ServerSdkConfig, type EvmUsdcMethodConfig } from './config.js';
+import { resolveLogger, type ServerSdkConfig, type EvmUsdcMethodConfig } from "./config.js";
 import type {
   AtlasPaymentMethodType,
   AtlasPaymentProof,
   AtlasPaymentVerifyParams,
   AtlasPaymentVerifyResult,
-} from './types/index.js';
+} from "./types/index.js";
 
-const TRANSFER_TOPIC =
-  '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
 interface ChainSpec {
   chain: Chain;
@@ -23,43 +22,43 @@ interface ChainSpec {
 // Tempo (a Stripe L1) is not in viem/chains. Define a minimal spec for it.
 const tempoChain = {
   id: 4217,
-  name: 'Tempo',
-  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-  rpcUrls: { default: { http: ['https://rpc.tempo.xyz'] } },
+  name: "Tempo",
+  nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+  rpcUrls: { default: { http: ["https://rpc.tempo.xyz"] } },
 } as const satisfies Chain;
 
 const CHAIN_SPECS: Record<
-  Exclude<AtlasPaymentMethodType, 'stripe_spt' | 'solana_usdc'>,
+  Exclude<AtlasPaymentMethodType, "stripe_spt" | "solana_usdc">,
   ChainSpec
 > = {
   tempo_usdc: {
     chain: tempoChain,
-    defaultRpcUrl: 'https://rpc.tempo.xyz',
-    usdcAddress: '0x20c000000000000000000000b9537d11c60e8b50',
+    defaultRpcUrl: "https://rpc.tempo.xyz",
+    usdcAddress: "0x20c000000000000000000000b9537d11c60e8b50",
     defaultConfirmations: 1,
   },
   base_usdc: {
     chain: base,
-    defaultRpcUrl: 'https://mainnet.base.org',
-    usdcAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    defaultRpcUrl: "https://mainnet.base.org",
+    usdcAddress: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     defaultConfirmations: 12,
   },
   arbitrum_usdc: {
     chain: arbitrum,
-    defaultRpcUrl: 'https://arb1.arbitrum.io/rpc',
-    usdcAddress: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+    defaultRpcUrl: "https://arb1.arbitrum.io/rpc",
+    usdcAddress: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
     defaultConfirmations: 64,
   },
   polygon_usdc: {
     chain: polygon,
-    defaultRpcUrl: 'https://polygon-rpc.com',
-    usdcAddress: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
+    defaultRpcUrl: "https://polygon-rpc.com",
+    usdcAddress: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
     defaultConfirmations: 128,
   },
   optimism_usdc: {
     chain: optimism,
-    defaultRpcUrl: 'https://mainnet.optimism.io',
-    usdcAddress: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85',
+    defaultRpcUrl: "https://mainnet.optimism.io",
+    usdcAddress: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
     defaultConfirmations: 10,
   },
   zksync_usdc: {
@@ -67,24 +66,24 @@ const CHAIN_SPECS: Record<
     // chain spec to avoid a hard dependency on its exact export name.
     chain: {
       id: 324,
-      name: 'zkSync',
-      nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-      rpcUrls: { default: { http: ['https://mainnet.era.zksync.io'] } },
+      name: "zkSync",
+      nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+      rpcUrls: { default: { http: ["https://mainnet.era.zksync.io"] } },
     } satisfies Chain,
-    defaultRpcUrl: 'https://mainnet.era.zksync.io',
-    usdcAddress: '0x3355df6D4c9C3035724Fd0e3914dE96A5a83aaf4',
+    defaultRpcUrl: "https://mainnet.era.zksync.io",
+    usdcAddress: "0x3355df6D4c9C3035724Fd0e3914dE96A5a83aaf4",
     defaultConfirmations: 1,
   },
 };
 
 export const SUPPORTED_PAYMENT_METHODS: readonly AtlasPaymentMethodType[] = [
-  'tempo_usdc',
-  'base_usdc',
-  'arbitrum_usdc',
-  'polygon_usdc',
-  'optimism_usdc',
-  'zksync_usdc',
-  'stripe_spt',
+  "tempo_usdc",
+  "base_usdc",
+  "arbitrum_usdc",
+  "polygon_usdc",
+  "optimism_usdc",
+  "zksync_usdc",
+  "stripe_spt",
 ];
 
 /**
@@ -113,7 +112,7 @@ export interface VerifyPaymentDeps {
  * wire this to their own payment store.
  */
 export async function verifyPayment(
-  config: Pick<ServerSdkConfig, 'paymentMethods' | 'logger'>,
+  config: Pick<ServerSdkConfig, "paymentMethods" | "logger">,
   proof: AtlasPaymentProof,
   params: AtlasPaymentVerifyParams,
   deps: VerifyPaymentDeps = {},
@@ -124,39 +123,40 @@ export async function verifyPayment(
     if (deps.isReplay) {
       const replay = await deps.isReplay(proof);
       if (replay) {
-        return { valid: false, error: 'Payment proof already used (replay rejected)' };
+        return { valid: false, error: "Payment proof already used (replay rejected)" };
       }
     }
 
     const method = config.paymentMethods.find((m) => m.type === proof.type);
 
     switch (proof.type) {
-      case 'stripe_spt': {
+      case "stripe_spt": {
         if (!proof.payment_intent_id) {
-          return { valid: false, error: 'Missing payment_intent_id' };
+          return { valid: false, error: "Missing payment_intent_id" };
         }
         if (!deps.verifyStripe) {
           return {
             valid: false,
             error:
-              'Stripe SPT verification not configured. Pass deps.verifyStripe to verifyPayment().',
+              "Stripe SPT verification not configured. Pass deps.verifyStripe to verifyPayment().",
           };
         }
 
         return deps.verifyStripe(proof.payment_intent_id, params.expected_amount_usd);
       }
 
-      case 'tempo_usdc':
-      case 'base_usdc':
-      case 'arbitrum_usdc':
-      case 'polygon_usdc':
-      case 'optimism_usdc':
-      case 'zksync_usdc': {
+      case "tempo_usdc":
+      case "base_usdc":
+      case "arbitrum_usdc":
+      case "polygon_usdc":
+      case "optimism_usdc":
+      case "zksync_usdc": {
         if (!proof.transaction_hash) {
-          return { valid: false, error: 'Missing transaction_hash' };
+          return { valid: false, error: "Missing transaction_hash" };
         }
 
-        const evmConfig = method?.type !== 'stripe_spt' ? (method as EvmUsdcMethodConfig | undefined) : undefined;
+        const evmConfig =
+          method?.type !== "stripe_spt" ? (method as EvmUsdcMethodConfig | undefined) : undefined;
         const recipient = evmConfig?.receiverAddress ?? params.recipient_address;
         if (!recipient) {
           return {
@@ -178,15 +178,14 @@ export async function verifyPayment(
           expectedRecipient: recipient,
           expectedAmountUsd: params.expected_amount_usd,
           usdcContract: evmConfig?.usdcContractAddress ?? spec.usdcAddress,
-          requiredConfirmations:
-            evmConfig?.requiredConfirmations ?? spec.defaultConfirmations,
+          requiredConfirmations: evmConfig?.requiredConfirmations ?? spec.defaultConfirmations,
         });
       }
 
-      case 'solana_usdc': {
+      case "solana_usdc": {
         return {
           valid: false,
-          error: 'Solana payment verification is not bundled in this package',
+          error: "Solana payment verification is not bundled in this package",
         };
       }
 
@@ -195,8 +194,8 @@ export async function verifyPayment(
       }
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Payment verification failed';
-    log.error('atlas payment verification failed', { err, proof });
+    const message = err instanceof Error ? err.message : "Payment verification failed";
+    log.error("atlas payment verification failed", { err, proof });
 
     return { valid: false, error: message };
   }
@@ -217,9 +216,9 @@ async function verifyEvmUsdcTransfer(
   const receipt = await client.getTransactionReceipt({
     hash: args.txHash as `0x${string}`,
   });
-  if (!receipt) return { valid: false, error: 'Transaction not found on-chain' };
-  if (receipt.status !== 'success') {
-    return { valid: false, error: 'Transaction reverted on-chain' };
+  if (!receipt) return { valid: false, error: "Transaction not found on-chain" };
+  if (receipt.status !== "success") {
+    return { valid: false, error: "Transaction reverted on-chain" };
   }
 
   const currentBlock = await client.getBlockNumber();
@@ -237,7 +236,7 @@ async function verifyEvmUsdcTransfer(
       log.topics[0] === TRANSFER_TOPIC,
   );
   if (transferLogs.length === 0) {
-    return { valid: false, error: 'No USDC Transfer event found in transaction' };
+    return { valid: false, error: "No USDC Transfer event found in transaction" };
   }
 
   const recipientLower = args.expectedRecipient.toLowerCase();
@@ -246,7 +245,7 @@ async function verifyEvmUsdcTransfer(
   for (const log of transferLogs) {
     const topic2 = log.topics[2];
     if (topic2 === undefined) continue;
-    const to = '0x' + topic2.slice(26).toLowerCase();
+    const to = "0x" + topic2.slice(26).toLowerCase();
     if (to !== recipientLower) continue;
 
     const transferredAmount = BigInt(log.data);
@@ -268,6 +267,6 @@ async function verifyEvmUsdcTransfer(
 
   return {
     valid: false,
-    error: 'No matching USDC transfer to expected recipient with expected amount',
+    error: "No matching USDC transfer to expected recipient with expected amount",
   };
 }

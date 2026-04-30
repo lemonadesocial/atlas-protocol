@@ -52,7 +52,7 @@ export interface AtlasEventDetail {
  * payments inside this package; they surface the challenge upstream.
  */
 export interface AtlasChallengeResponse {
-  'atlas:challenge': {
+  "atlas:challenge": {
     challenge_id: string;
     ticket_hold_id: string;
     hold_expires_at: string;
@@ -71,7 +71,7 @@ export interface AtlasChallengeResponse {
 }
 
 export interface AtlasFreeTicketResponse {
-  type: 'free_ticket_redirect';
+  type: "free_ticket_redirect";
   message: string;
   redirect_url: string;
 }
@@ -85,7 +85,7 @@ export interface AtlasCheckoutResponse {
 
 export interface AtlasReceiptResponse {
   hold_id: string;
-  status: 'pending' | 'completed' | 'expired';
+  status: "pending" | "completed" | "expired";
   event_id: string;
   event_title: string;
   ticket_type_title: string;

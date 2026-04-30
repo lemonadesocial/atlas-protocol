@@ -6,7 +6,7 @@
 export class ConnectorError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'ConnectorError';
+    this.name = "ConnectorError";
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }
@@ -17,9 +17,9 @@ export class ConnectorError extends Error {
  * retry the call with fresh credentials.
  */
 export class AuthExpiredError extends ConnectorError {
-  constructor(message = 'Authentication credentials are expired or invalid') {
+  constructor(message = "Authentication credentials are expired or invalid") {
     super(message);
-    this.name = 'AuthExpiredError';
+    this.name = "AuthExpiredError";
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }
@@ -32,9 +32,9 @@ export class AuthExpiredError extends ConnectorError {
 export class RateLimitError extends ConnectorError {
   readonly retryAfterSeconds?: number;
 
-  constructor(message = 'Rate limit exceeded', retryAfterSeconds?: number) {
+  constructor(message = "Rate limit exceeded", retryAfterSeconds?: number) {
     super(message);
-    this.name = 'RateLimitError';
+    this.name = "RateLimitError";
     if (retryAfterSeconds !== undefined) {
       this.retryAfterSeconds = retryAfterSeconds;
     }
@@ -51,9 +51,9 @@ export class RateLimitError extends ConnectorError {
  * no longer exists).
  */
 export class NotFoundError extends ConnectorError {
-  constructor(message = 'Requested resource was not found') {
+  constructor(message = "Requested resource was not found") {
     super(message);
-    this.name = 'NotFoundError';
+    this.name = "NotFoundError";
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }

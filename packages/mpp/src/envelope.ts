@@ -14,13 +14,9 @@
  * `deserialize()` further down.
  */
 
-import type {
-  MppEnvelope,
-  MppHeader,
-  MppRequest,
-} from './types/envelope.js';
-import type { MppLineItem, MppPayload } from './types/payload.js';
-import { isValidMethodIdentifier } from './rails.js';
+import type { MppEnvelope, MppHeader, MppRequest } from "./types/envelope.js";
+import type { MppLineItem, MppPayload } from "./types/payload.js";
+import { isValidMethodIdentifier } from "./rails.js";
 
 /**
  * Current MPP protocol version this implementation targets.
@@ -29,40 +25,36 @@ import { isValidMethodIdentifier } from './rails.js';
  * a numeric protocol version (only a `mpp.dev@<git-sha>` build label).
  * We pin "1.0" as the protected-header `mpp_ver` per the task brief.
  */
-export const MPP_PROTOCOL_VERSION = '1.0';
+export const MPP_PROTOCOL_VERSION = "1.0";
 
 /** Reserved keys that `encode()` writes into the request payload. */
 const RESERVED_REQUEST_KEYS = {
-  amount: 'amount',
-  currency: 'currency',
-  recipient: 'recipient',
-  organizer: 'organizer',
-  items: 'items',
-  metadata: 'metadata',
+  amount: "amount",
+  currency: "currency",
+  recipient: "recipient",
+  organizer: "organizer",
+  items: "items",
+  metadata: "metadata",
 } as const;
 
 /**
  * Lift a developer-facing `MppPayload` into a wire-shape `MppEnvelope`.
  */
 export function encode(payload: MppPayload): MppEnvelope {
-  if (!payload.rail) throw new Error('encode: payload.rail is required');
+  if (!payload.rail) throw new Error("encode: payload.rail is required");
   if (!isValidMethodIdentifier(payload.rail))
-    throw new Error(
-      `encode: payload.rail "${payload.rail}" is not a valid MPP method identifier`,
-    );
-  if (!payload.realm) throw new Error('encode: payload.realm is required');
-  if (!payload.paymentId)
-    throw new Error('encode: payload.paymentId is required');
-  if (!payload.amount) throw new Error('encode: payload.amount is required');
-  if (!payload.currency)
-    throw new Error('encode: payload.currency is required');
+    throw new Error(`encode: payload.rail "${payload.rail}" is not a valid MPP method identifier`);
+  if (!payload.realm) throw new Error("encode: payload.realm is required");
+  if (!payload.paymentId) throw new Error("encode: payload.paymentId is required");
+  if (!payload.amount) throw new Error("encode: payload.amount is required");
+  if (!payload.currency) throw new Error("encode: payload.currency is required");
 
   const header: MppHeader = {
     mpp_ver: MPP_PROTOCOL_VERSION,
     id: payload.paymentId,
     realm: payload.realm,
     method: payload.rail,
-    intent: payload.intent ?? 'charge',
+    intent: payload.intent ?? "charge",
     ...(payload.expires !== undefined && { expires: payload.expires }),
     ...(payload.description !== undefined && {
       description: payload.description,
@@ -97,17 +89,11 @@ export function encode(payload: MppPayload): MppEnvelope {
  */
 export function decode(envelope: MppEnvelope): MppPayload {
   const { header, request } = envelope;
-  if (!header) throw new Error('decode: envelope.header is required');
-  if (!request) throw new Error('decode: envelope.request is required');
+  if (!header) throw new Error("decode: envelope.header is required");
+  if (!request) throw new Error("decode: envelope.request is required");
 
-  const amount = expectString(
-    request[RESERVED_REQUEST_KEYS.amount],
-    'request.amount',
-  );
-  const currency = expectString(
-    request[RESERVED_REQUEST_KEYS.currency],
-    'request.currency',
-  );
+  const amount = expectString(request[RESERVED_REQUEST_KEYS.amount], "request.amount");
+  const currency = expectString(request[RESERVED_REQUEST_KEYS.currency], "request.currency");
   const recipient = optionalString(request[RESERVED_REQUEST_KEYS.recipient]);
   const organizer = optionalString(request[RESERVED_REQUEST_KEYS.organizer]);
 
@@ -115,8 +101,7 @@ export function decode(envelope: MppEnvelope): MppPayload {
   const items = rawItems !== undefined ? readLineItems(rawItems) : undefined;
 
   const rawMetadata = request[RESERVED_REQUEST_KEYS.metadata];
-  const metadata =
-    rawMetadata !== undefined ? readMetadata(rawMetadata) : undefined;
+  const metadata = rawMetadata !== undefined ? readMetadata(rawMetadata) : undefined;
 
   const payload: MppPayload = {
     rail: header.method,
@@ -169,12 +154,12 @@ export function deserialize(encoded: string): MppEnvelope {
   const json = base64UrlDecode(encoded);
   const parsed = JSON.parse(json) as unknown;
   if (
-    typeof parsed !== 'object' ||
+    typeof parsed !== "object" ||
     parsed === null ||
-    !('header' in parsed) ||
-    !('request' in parsed)
+    !("header" in parsed) ||
+    !("request" in parsed)
   ) {
-    throw new Error('deserialize: not an MPP envelope');
+    throw new Error("deserialize: not an MPP envelope");
   }
   return parsed as MppEnvelope;
 }
@@ -191,20 +176,16 @@ function normalizeLineItem(item: MppLineItem): Record<string, unknown> {
 }
 
 function readLineItems(raw: unknown): MppLineItem[] {
-  if (!Array.isArray(raw))
-    throw new Error('decode: request.items must be an array');
+  if (!Array.isArray(raw)) throw new Error("decode: request.items must be an array");
   return raw.map((entry, idx) => {
-    if (typeof entry !== 'object' || entry === null)
+    if (typeof entry !== "object" || entry === null)
       throw new Error(`decode: request.items[${idx}] must be an object`);
     const e = entry as Record<string, unknown>;
-    const id = expectString(e['id'], `request.items[${idx}].id`);
-    const unitAmount = expectString(
-      e['unitAmount'],
-      `request.items[${idx}].unitAmount`,
-    );
-    const description = optionalString(e['description']);
-    const quantity = e['quantity'];
-    if (quantity !== undefined && typeof quantity !== 'number')
+    const id = expectString(e["id"], `request.items[${idx}].id`);
+    const unitAmount = expectString(e["unitAmount"], `request.items[${idx}].unitAmount`);
+    const description = optionalString(e["description"]);
+    const quantity = e["quantity"];
+    if (quantity !== undefined && typeof quantity !== "number")
       throw new Error(`decode: request.items[${idx}].quantity must be a number`);
     const item: MppLineItem = {
       id,
@@ -217,35 +198,31 @@ function readLineItems(raw: unknown): MppLineItem[] {
 }
 
 function readMetadata(raw: unknown): Record<string, string> {
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw))
-    throw new Error('decode: request.metadata must be an object');
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw))
+    throw new Error("decode: request.metadata must be an object");
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(raw)) {
-    if (typeof v !== 'string')
-      throw new Error(
-        `decode: request.metadata.${k} must be a string (got ${typeof v})`,
-      );
+    if (typeof v !== "string")
+      throw new Error(`decode: request.metadata.${k} must be a string (got ${typeof v})`);
     out[k] = v;
   }
   return out;
 }
 
 function expectString(value: unknown, label: string): string {
-  if (typeof value !== 'string')
-    throw new Error(`decode: ${label} must be a string`);
+  if (typeof value !== "string") throw new Error(`decode: ${label} must be a string`);
   return value;
 }
 
 function optionalString(value: unknown): string | undefined {
   if (value === undefined) return undefined;
-  if (typeof value !== 'string')
-    throw new Error('decode: expected string or undefined');
+  if (typeof value !== "string") throw new Error("decode: expected string or undefined");
   return value;
 }
 
 function sortKeysDeep(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sortKeysDeep);
-  if (value !== null && typeof value === 'object') {
+  if (value !== null && typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, v]) => v !== undefined)
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
@@ -257,17 +234,17 @@ function sortKeysDeep(value: unknown): unknown {
 }
 
 function base64UrlEncode(input: string): string {
-  return Buffer.from(input, 'utf8')
-    .toString('base64')
-    .replace(/=+$/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
+  return Buffer.from(input, "utf8")
+    .toString("base64")
+    .replace(/=+$/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
 }
 
 function base64UrlDecode(encoded: string): string {
   const padded = encoded
-    .replace(/-/g, '+')
-    .replace(/_/g, '/')
-    .padEnd(encoded.length + ((4 - (encoded.length % 4)) % 4), '=');
-  return Buffer.from(padded, 'base64').toString('utf8');
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    .padEnd(encoded.length + ((4 - (encoded.length % 4)) % 4), "=");
+  return Buffer.from(padded, "base64").toString("utf8");
 }

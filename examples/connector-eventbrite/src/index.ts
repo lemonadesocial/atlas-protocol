@@ -1,25 +1,25 @@
-import type { AtlasEvent, AtlasTicketType } from '@atlasprotocol/server-sdk';
+import type { AtlasEvent, AtlasTicketType } from "@atlasprotocol/server-sdk";
 import {
   AuthExpiredError,
   type AuthContext,
   type Connector,
   type ConnectorCapabilities,
   type SearchParams,
-} from '@atlasprotocol/connector-framework';
+} from "@atlasprotocol/connector-framework";
 
-import { EventbriteApiClient, type EventbriteApiClientOptions } from './api.js';
+import { EventbriteApiClient, type EventbriteApiClientOptions } from "./api.js";
 import {
   eventbriteEventToAtlas,
   eventbriteTicketClassToAtlas,
   type MapEventOptions,
   type MapTicketTypeOptions,
-} from './mappers.js';
+} from "./mappers.js";
 
 export interface EventbriteConnectorOptions {
   /** Base URL of the host's ATLAS endpoint, used to build atlas:purchase_endpoint. */
   baseUrl: string;
   /** Defaults applied to every emitted AtlasEvent. */
-  eventDefaults?: Pick<MapEventOptions, 'acceptedPaymentMethods'>;
+  eventDefaults?: Pick<MapEventOptions, "acceptedPaymentMethods">;
   /** Defaults applied to every emitted AtlasTicketType. */
   ticketDefaults?: MapTicketTypeOptions;
   /** Override the underlying REST API client (e.g. for testing). */
@@ -43,14 +43,14 @@ const CAPABILITIES: ConnectorCapabilities = {
  * authentication state; this class holds only configuration.
  */
 export class EventbriteConnector implements Connector {
-  readonly id = 'eventbrite';
-  readonly name = 'Eventbrite';
-  readonly authMethod = 'oauth2' as const;
+  readonly id = "eventbrite";
+  readonly name = "Eventbrite";
+  readonly authMethod = "oauth2" as const;
   readonly capabilities = CAPABILITIES;
 
   private readonly api: EventbriteApiClient;
   private readonly baseUrl: string;
-  private readonly eventDefaults: Pick<MapEventOptions, 'acceptedPaymentMethods'> | undefined;
+  private readonly eventDefaults: Pick<MapEventOptions, "acceptedPaymentMethods"> | undefined;
   private readonly ticketDefaults: MapTicketTypeOptions | undefined;
 
   constructor(opts: EventbriteConnectorOptions) {
@@ -71,15 +71,15 @@ export class EventbriteConnector implements Connector {
     const accessToken = requireOAuth(auth);
     const query: Record<string, string | number | undefined> = {};
     if (params.query) query.name_filter = params.query;
-    if (params.startDate) query['start_date.range_start'] = params.startDate.toISOString();
-    if (params.endDate) query['start_date.range_end'] = params.endDate.toISOString();
+    if (params.startDate) query["start_date.range_start"] = params.startDate.toISOString();
+    if (params.endDate) query["start_date.range_end"] = params.endDate.toISOString();
     if (params.limit !== undefined) query.page_size = Math.max(1, Math.min(100, params.limit));
     if (params.cursor) query.continuation = params.cursor;
     if (params.location) {
       // Eventbrite location.within syntax: e.g. "10km@40.7128,-74.006".
-      query['location.within'] = `${params.location.radiusKm}km`;
-      query['location.latitude'] = params.location.lat;
-      query['location.longitude'] = params.location.lng;
+      query["location.within"] = `${params.location.radiusKm}km`;
+      query["location.latitude"] = params.location.lat;
+      query["location.longitude"] = params.location.lng;
     }
 
     const page = await this.api.listMyEvents(accessToken, query);
@@ -93,10 +93,7 @@ export class EventbriteConnector implements Connector {
     return this.toAtlas(eb);
   }
 
-  async listTicketTypes(
-    externalEventId: string,
-    auth: AuthContext,
-  ): Promise<AtlasTicketType[]> {
+  async listTicketTypes(externalEventId: string, auth: AuthContext): Promise<AtlasTicketType[]> {
     const accessToken = requireOAuth(auth);
     const page = await this.api.listTicketClasses(accessToken, externalEventId);
     return page.ticket_classes.map((tc) =>
@@ -104,7 +101,7 @@ export class EventbriteConnector implements Connector {
     );
   }
 
-  private toAtlas(eb: import('./api.js').EventbriteEvent): AtlasEvent {
+  private toAtlas(eb: import("./api.js").EventbriteEvent): AtlasEvent {
     const opts: MapEventOptions = { baseUrl: this.baseUrl };
     if (this.eventDefaults?.acceptedPaymentMethods) {
       opts.acceptedPaymentMethods = this.eventDefaults.acceptedPaymentMethods;
@@ -114,13 +111,13 @@ export class EventbriteConnector implements Connector {
 }
 
 function requireOAuth(auth: AuthContext): string {
-  if (auth.type !== 'oauth2') {
+  if (auth.type !== "oauth2") {
     throw new AuthExpiredError(
       `Eventbrite connector requires oauth2 auth, received "${auth.type}"`,
     );
   }
   if (!auth.accessToken) {
-    throw new AuthExpiredError('Eventbrite connector received an empty access token');
+    throw new AuthExpiredError("Eventbrite connector received an empty access token");
   }
   return auth.accessToken;
 }
@@ -132,13 +129,13 @@ export {
   type EventbriteTicketClass,
   type EventbritePagedEvents,
   type EventbritePagedTicketClasses,
-} from './api.js';
+} from "./api.js";
 export {
   eventbriteEventToAtlas,
   eventbriteTicketClassToAtlas,
   type MapEventOptions,
   type MapTicketTypeOptions,
-} from './mappers.js';
+} from "./mappers.js";
 export {
   buildAuthorizeUrl,
   exchangeCodeForToken,
@@ -149,4 +146,4 @@ export {
   type OAuthClientConfig,
   type OAuthTokenResponse,
   type PkcePair,
-} from './auth.js';
+} from "./auth.js";

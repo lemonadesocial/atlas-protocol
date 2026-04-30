@@ -1,18 +1,18 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { IncomingMessage, ServerResponse } from "node:http";
 
-import type { ServerSdkConfig } from './config.js';
-import type { AtlasManifest } from './types/index.js';
+import type { ServerSdkConfig } from "./config.js";
+import type { AtlasManifest } from "./types/index.js";
 
 export interface GenerateManifestOptions {
   /** Optional space scope. When set, search is scoped to `/spaces/{spaceId}/search`. */
   spaceId?: string;
   /** Override capabilities for this server. Defaults to discovery + purchase + holds. */
-  capabilities?: Partial<AtlasManifest['capabilities']>;
+  capabilities?: Partial<AtlasManifest["capabilities"]>;
   /** Override base URL inferred from config.domain. */
   baseUrl?: string;
 }
 
-const DEFAULT_CAPABILITIES: AtlasManifest['capabilities'] = {
+const DEFAULT_CAPABILITIES: AtlasManifest["capabilities"] = {
   discovery: true,
   purchase: true,
   refund: false,
@@ -22,12 +22,12 @@ const DEFAULT_CAPABILITIES: AtlasManifest['capabilities'] = {
 };
 
 function trimTrailingSlash(url: string): string {
-  return url.endsWith('/') ? url.slice(0, -1) : url;
+  return url.endsWith("/") ? url.slice(0, -1) : url;
 }
 
 function inferBaseUrl(domain: string): string {
   const trimmed = trimTrailingSlash(domain);
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     return trimmed;
   }
 
@@ -51,8 +51,8 @@ export function generateManifest(
   const paymentMethods = config.paymentMethods.map((method) => method.type);
 
   return {
-    '@context': 'https://atlas-protocol.org/v1',
-    atlas_version: '1.0',
+    "@context": "https://atlas-protocol.org/v1",
+    atlas_version: "1.0",
     platform: {
       name: config.platform.name,
       url: config.platform.url,
@@ -92,7 +92,7 @@ export function generateManifest(
  */
 export function generateSpaceManifest(
   config: ServerSdkConfig,
-  args: { spaceId: string } & Omit<GenerateManifestOptions, 'spaceId'>,
+  args: { spaceId: string } & Omit<GenerateManifestOptions, "spaceId">,
 ): AtlasManifest {
   return generateManifest(config, { ...args, spaceId: args.spaceId });
 }
@@ -114,9 +114,9 @@ export function createWellKnownHandler(
 
   return (_req, res) => {
     res.statusCode = 200;
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=3600");
     res.end(body);
   };
 }

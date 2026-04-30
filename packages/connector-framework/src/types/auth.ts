@@ -6,5 +6,5 @@
  * and forwards credentials per request via this discriminated union.
  */
 export type AuthContext =
-  | { type: 'oauth2'; accessToken: string; refreshToken?: string }
-  | { type: 'apikey'; apiKey: string };
+  | { type: "oauth2"; accessToken: string; refreshToken?: string }
+  | { type: "apikey"; apiKey: string };

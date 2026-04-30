@@ -44,7 +44,7 @@ export interface AtlasSigningKeyJwk {
 }
 
 export interface AtlasManifest {
-  '@context': string;
+  "@context": string;
   atlas_version: string;
   platform: AtlasManifestPlatform;
   capabilities: AtlasManifestCapabilities;

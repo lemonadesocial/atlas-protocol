@@ -29,7 +29,8 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "echo \"no lint configured\" && exit 0",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "clean": "rm -rf dist *.tsbuildinfo"
   },

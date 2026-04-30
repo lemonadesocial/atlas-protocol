@@ -1,6 +1,6 @@
 export interface AtlasFee {
   name: string;
-  type: 'percentage' | 'fixed';
+  type: "percentage" | "fixed";
   rate?: number;
   amount: number;
   description: string;
@@ -17,11 +17,11 @@ export interface AtlasPricing {
 }
 
 export type AtlasTicketAvailabilityStatus =
-  | 'available'
-  | 'few_remaining'
-  | 'sold_out'
-  | 'not_on_sale'
-  | 'hidden';
+  | "available"
+  | "few_remaining"
+  | "sold_out"
+  | "not_on_sale"
+  | "hidden";
 
 export interface AtlasTicketAvailability {
   status: AtlasTicketAvailabilityStatus;
@@ -57,15 +57,15 @@ export interface AtlasCancellationPolicy {
 }
 
 export interface AtlasTicketType {
-  'atlas:ticket_type_id': string;
-  'atlas:source_ticket_type_id': string;
+  "atlas:ticket_type_id": string;
+  "atlas:source_ticket_type_id": string;
   name: string;
   description?: string | undefined;
-  'atlas:event_id': string;
-  'atlas:pricing': AtlasPricing;
-  'atlas:availability': AtlasTicketAvailability;
-  'atlas:restrictions': AtlasTicketRestrictions;
-  'atlas:cancellation_policy': AtlasCancellationPolicy;
-  'atlas:accepted_payment_methods': string[];
-  'atlas:metadata': Record<string, unknown>;
+  "atlas:event_id": string;
+  "atlas:pricing": AtlasPricing;
+  "atlas:availability": AtlasTicketAvailability;
+  "atlas:restrictions": AtlasTicketRestrictions;
+  "atlas:cancellation_policy": AtlasCancellationPolicy;
+  "atlas:accepted_payment_methods": string[];
+  "atlas:metadata": Record<string, unknown>;
 }
