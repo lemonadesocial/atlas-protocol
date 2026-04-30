@@ -10,11 +10,11 @@
   },
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "tsc -b",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck",
-    "clean": "pnpm -r clean"
+    "typecheck": "tsc -b --noEmit",
+    "clean": "tsc -b --clean && rm -rf packages/*/dist examples/*/dist packages/*/*.tsbuildinfo examples/*/*.tsbuildinfo"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

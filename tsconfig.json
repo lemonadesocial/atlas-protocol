@@ -1,0 +1,11 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/server-sdk" },
+    { "path": "./packages/agent-tools" },
+    { "path": "./packages/mpp" },
+    { "path": "./packages/connector-framework" },
+    { "path": "./packages/ipfs" },
+    { "path": "./examples/connector-eventbrite" }
+  ]
+}
