@@ -1,6 +1,6 @@
 {
   "name": "@atlasprotocol/ipfs",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Deterministic CID generation and pinning service abstractions for the ATLAS Protocol.",
   "license": "MIT",
   "repository": {
