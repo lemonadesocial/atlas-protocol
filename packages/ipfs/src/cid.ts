@@ -6,6 +6,9 @@ import * as raw from "multiformats/codecs/raw";
  * Compute a CIDv1 (raw codec, sha256, base32 lowercase) for the given canonical
  * bytes. The output is stable across runs and platforms — identical input bytes
  * always yield the identical CID string.
+ *
+ * Callers are responsible for canonicalizing the input first; passing arbitrary
+ * encoder output will produce a CID that is not reproducible by other clients.
  */
 export async function generateCid(canonicalBytes: Uint8Array): Promise<string> {
   const hash = await sha256.digest(canonicalBytes);
