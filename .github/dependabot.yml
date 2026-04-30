@@ -10,6 +10,16 @@ updates:
         dependency-type: "development"
       production-dependencies:
         dependency-type: "production"
+    ignore:
+      # Major bumps for these libraries require deliberate migration work
+      # (re-exported public types, breaking API changes affecting our packages).
+      # Unblock manually when a planned breaking release of @atlasprotocol/* lines up.
+      - dependency-name: "jose"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@langchain/core"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
