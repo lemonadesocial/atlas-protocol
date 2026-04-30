@@ -5,6 +5,17 @@ All notable changes to `@atlasprotocol/ipfs` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3](https://github.com/lemonadesocial/atlas-protocol/compare/ipfs-v0.1.2...ipfs-v0.1.3) (2026-04-30)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * devDependencies
+    * @atlasprotocol/server-sdk bumped to 0.1.1
+  * peerDependencies
+    * @atlasprotocol/server-sdk bumped to 0.1.1
+
 ## [0.1.2](https://github.com/lemonadesocial/atlas-protocol/compare/ipfs-v0.1.1...ipfs-v0.1.2) (2026-04-30)
 
 

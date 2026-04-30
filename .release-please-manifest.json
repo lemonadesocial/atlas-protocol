@@ -1,7 +1,7 @@
 {
-  "packages/agent-tools": "0.1.0",
-  "packages/server-sdk": "0.1.0",
-  "packages/mpp": "0.1.0",
-  "packages/ipfs": "0.1.2",
-  "packages/connector-framework": "0.1.0"
+  "packages/agent-tools": "0.1.1",
+  "packages/server-sdk": "0.1.1",
+  "packages/mpp": "0.1.1",
+  "packages/ipfs": "0.1.3",
+  "packages/connector-framework": "0.1.1"
 }
