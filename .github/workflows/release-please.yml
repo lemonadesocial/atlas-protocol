@@ -42,6 +42,11 @@ jobs:
       - run: pnpm build
         if: ${{ steps.release.outputs.releases_created }}
 
+      # OIDC trusted publishers require npm CLI 11.5.1+; Node 22 ships with npm 10.
+      - name: Upgrade npm to OIDC-capable version
+        if: ${{ steps.release.outputs.releases_created }}
+        run: npm install -g npm@latest
+
       # Authentication via OIDC trusted publishers — see https://docs.npmjs.com/trusted-publishers
       - name: Publish released packages
         if: ${{ steps.release.outputs.releases_created }}
