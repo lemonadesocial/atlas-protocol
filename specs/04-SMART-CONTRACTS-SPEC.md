@@ -410,29 +410,123 @@ event CampaignExhausted(
 
 ---
 
-## 8. Audit and Deployment
+## 8. Stage 3 — AtlasTicket: cross-chain NFT issuance
 
-### 8.1 Security Audit
+### 8.1 Design intent
+
+AtlasTicket is the protocol's NFT ticketing layer. It is **EVM-portable** — operators deploy AtlasTicket on whichever EVM chain best fits their event UX. There is no protocol-level recommendation about which chain to use; it's an operational decision based on tradeoffs (mint cost per ticket, throughput, user reach, ecosystem fit).
+
+The protocol's three primitives — FeeRouter for payment, AtlasTicket for issuance, registry pointer for discovery — are **independent chain decisions**. Operators choose where each lives. They may collapse all three onto a single chain for one-chain UX simplicity, or split them across chains optimized per concern. Both patterns are first-class.
+
+Solana support requires a separate Anchor program (`@atlasprotocol/solana-ticket`) — different language, different VM, separate audit. Post-seed work; not Stage 3 scope. Other non-EVM chains (Sui, Aptos, Move-based) are out of scope until proven operator demand exists.
+
+### 8.2 Cross-chain settlement → mint via signed claims
+
+Payments settle on the FeeRouter chain. Ticket mints happen on the AtlasTicket chain. When these are different chains, the link between them is a **signed claim**, not a bridge:
+
+1. Buyer settles payment via FeeRouter on chain A. FeeRouter emits `PaymentSettled(paymentId, organizer, amount, fee)`.
+2. Atlas-compliant operator backend signs a claim with the FeeRouter's authorized signing key:
+
+   ```solidity
+   Claim {
+     paymentTxHash:  bytes32,
+     paymentChainId: uint256,
+     eventId:        bytes32,
+     ticketTypeId:   bytes32,
+     recipient:      address,
+     paymentAmount:  uint256,
+     nonce:          uint256,
+     deadline:       uint256,
+   }
+   signature: ECDSA signature over Claim
+   ```
+
+3. Recipient (or the operator on their behalf) submits claim + signature to AtlasTicket on chain B:
+
+   ```solidity
+   AtlasTicket.mintWithClaim(claim, signature)
+   ```
+
+   AtlasTicket verifies:
+   - Signature recovers to a registered authorizer for `paymentChainId`
+   - Claim hasn't been used (nonce check)
+   - Deadline not passed
+   - Then mints the NFT to `recipient`
+
+When settlement and ticketing are on the **same chain**, the same `mintWithClaim` flow works — the operator signs a claim from the same chain, AtlasTicket verifies and mints. No special case needed.
+
+### 8.3 Why signed claims, not bridges
+
+- Bridges have historically been the largest source of crypto exploits. Adding bridge dependency to mint a $50 ticket is wrong cost-benefit.
+- Signed claims add a centralization point (the operator's signing key) but that's acceptable because **the operator is already centralized** — they're the source of truth for the event itself.
+- Trust upgrade path: replace signed claims with Hyperlane / CCIP / LayerZero cross-chain messaging at Stage 4 if true trustlessness becomes required.
+
+### 8.4 Required AtlasTicket capabilities (Stage 3)
+
+- **ERC-721** standard NFT for individual ticket ownership and resale.
+- **Optional ERC-2981 royalties** so organizers earn on resales.
+- **Batch minting.** `batchMintWithClaim(Claim[] claims, bytes[] signatures)` — events with 10K+ attendees would otherwise pay 10K × per-mint gas. Batch sizes up to 500 in a single transaction. Batch limits depend on chain block gas limit; configurable per deployment.
+- **Authorized signer registry.** The contract maintains a mapping of `chainId → authorized signer addresses`. Adding a new authorizer is admin-controlled; removing must be possible (compromise mitigation).
+- **Event registry.** `mapping(bytes32 eventId => EventConfig)` so tickets reference real events with metadata (CID), max supply, ticket type structure.
+- **Transfer hooks.** Optional whitelist / blacklist for tickets that organizers want to restrict to verified accounts.
+- **CREATE2 deployment.** Same pattern as FeeRouter — version-aware salt produces the same proxy address on every EVM chain, so AtlasTicket also has a single canonical address across chains.
+
+### 8.5 Solana port
+
+`@atlasprotocol/solana-ticket` is a separate Anchor program when we ship Solana support post-seed. Same semantics:
+
+- Mint with cross-chain claim (signed by an EVM authorizer key)
+- Authorizer registry
+- Batch issuance (Solana supports much higher throughput — batch sizes can be larger)
+- Compatible with Metaplex NFT standard for marketplace interop
+
+Different audit, different package, different deployment ops. Don't try to coordinate single-chain logic across Solana and EVM at the contract level — keep them independent.
+
+### 8.6 Receipt format references all three chains
+
+The IPFS-archived receipt for a transaction includes:
+
+```json
+{
+  "paymentChainId": 0,
+  "paymentTxHash": "0x...",
+  "paymentAmount": 0,
+  "protocolFee": 0,
+  "ticketChainId": 0,
+  "ticketTxHash": "0x...",
+  "ticketTokenId": 0,
+  "eventCID": "ipfs://...",
+  "atlasVersion": "0.1"
+}
+```
+
+This is the canonical record across all three chains involved. When all three primitives are on the same chain, `paymentChainId == ticketChainId` and the receipt is internally consistent — no special case.
+
+---
+
+## 9. Audit and Deployment
+
+### 9.1 Security Audit
 
 An independent security firm audits all five contracts before Stage 1 deployment. The audit covers reentrancy vectors, access control correctness, proxy upgrade safety, integer overflow/underflow (Solidity 0.8+ built-in checks), and USDC transfer edge cases (return value handling). Audit reports are published publicly.
 
-### 8.2 Parallel Operation
+### 9.2 Parallel Operation
 
 Each stage runs a 90-day parallel operation period. The new on-chain component runs alongside the existing centralized component. Both produce results. Discrepancies trigger investigation and resolution before proceeding.
 
-### 8.3 Gradual Migration
+### 9.3 Gradual Migration
 
 Traffic shifts incrementally across four thresholds: 10%, 25%, 50%, 100%. At each threshold, monitoring covers gas costs, transaction success rates, settlement latency, and user experience. The system holds at each threshold for a minimum observation window before advancing.
 
-### 8.4 Rollback Procedure
+### 9.4 Rollback Procedure
 
 If a critical bug is discovered during migration, traffic reverts to the centralized system. The on-chain contracts are paused via the `PAUSER` role. The development team patches and re-audits the contracts. Migration restarts from the 10% threshold after the fix is deployed.
 
-### 8.5 Deployment Tooling
+### 9.5 Deployment Tooling
 
 Contracts are compiled and deployed using Hardhat or Foundry. Deployment scripts configure constructor parameters (USDC token address, treasury address, initial role assignments) per chain. After deployment, contracts are verified on each chain's block explorer (Etherscan, Basescan, Arbiscan, and chain-specific explorers).
 
-### 8.6 Adding a New Chain
+### 9.6 Adding a New Chain
 
 Deploying to a new chain requires four steps. First, deploy the five contracts with the same Solidity source and constructor parameters. Second, verify on the chain's block explorer. Third, register the chain in the ATLAS registry (chain ID, contract addresses, USDC token address, RPC endpoints). Fourth, update the CLI and SDK to include the new chain option. No protocol or schema changes are needed.
 
