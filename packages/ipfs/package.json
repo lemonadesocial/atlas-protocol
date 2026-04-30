@@ -1,0 +1,45 @@
+{
+  "name": "@atlas/ipfs",
+  "version": "0.1.0",
+  "description": "Deterministic CID generation and pinning service abstractions for the ATLAS Protocol.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lemonadesocial/atlas-protocol.git",
+    "directory": "packages/ipfs"
+  },
+  "keywords": [
+    "atlas",
+    "atlas-protocol",
+    "ipfs",
+    "cid",
+    "pinning"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "echo \"no lint configured\" && exit 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "multiformats": "^13.3.0"
+  },
+  "peerDependencies": {
+    "@atlas/server-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@atlas/server-sdk": "workspace:*",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.0.0"
+  }
+}
