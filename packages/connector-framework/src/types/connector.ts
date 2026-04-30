@@ -27,6 +27,7 @@ export interface Connector {
   readonly authMethod: "oauth2" | "apikey";
   readonly capabilities: ConnectorCapabilities;
   search(params: SearchParams, auth: AuthContext): Promise<AtlasEvent[]>;
+  // Returns `null` (not `NotFoundError`) when the event does not exist on the upstream platform — see errors.ts for the convention.
   getEvent(externalId: string, auth: AuthContext): Promise<AtlasEvent | null>;
   listTicketTypes(externalEventId: string, auth: AuthContext): Promise<AtlasTicketType[]>;
 }
