@@ -1,6 +1,6 @@
 {
   "name": "@atlasprotocol/mpp",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Standalone implementation of the Machine Payments Protocol (MPP) envelope: challenge / credential / receipt encode + sign + verify. Optional JWS wrapping layer for signed envelopes.",
   "license": "MIT",
   "repository": {

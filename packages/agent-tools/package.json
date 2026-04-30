@@ -1,6 +1,6 @@
 {
   "name": "@atlasprotocol/agent-tools",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Agent-side ATLAS Protocol tooling for LangChain and MCP. Speak ATLAS from any agent runtime.",
   "license": "MIT",
   "repository": {
@@ -39,8 +39,12 @@
     "zod": ">=4.0.0"
   },
   "peerDependenciesMeta": {
-    "@langchain/core": { "optional": true },
-    "@modelcontextprotocol/sdk": { "optional": true }
+    "@langchain/core": {
+      "optional": true
+    },
+    "@modelcontextprotocol/sdk": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@langchain/core": "^0.3.0",

@@ -2,6 +2,22 @@
 
 All notable changes to this package will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.0.0 (2026-04-30)
+
+
+### Features
+
+* **connector-framework:** abstract Connector interface and types ([3902520](https://github.com/lemonadesocial/atlas-protocol/commit/39025209e0e266ca0fcdb45909c8bb57c8bf6c5d))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * devDependencies
+    * @atlasprotocol/server-sdk bumped to 1.0.0
+  * peerDependencies
+    * @atlasprotocol/server-sdk bumped to 1.0.0
+
 ## [0.1.0] - 2026-04-30
 
 ### Added
