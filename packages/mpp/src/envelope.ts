@@ -223,6 +223,7 @@ function optionalString(value: unknown): string | undefined {
 function sortKeysDeep(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sortKeysDeep);
   if (value !== null && typeof value === "object") {
+    // `undefined` entries are dropped — JSON has no representation for them, and including them would break round-trip equivalence.
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, v]) => v !== undefined)
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
