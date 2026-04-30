@@ -81,23 +81,26 @@ export function buildAtlasLangChainTools<TState = unknown>(
 
   const tools: DynamicStructuredTool[] = [];
 
+  const atlasSearchSchema = z.object({
+    query: z.string().optional().describe("Free-text search query"),
+    city: z.string().optional().describe("City name to filter by"),
+    lat: z.number().optional().describe("Latitude for geo search"),
+    lng: z.number().optional().describe("Longitude for geo search"),
+    radius_km: z.number().optional().describe("Radius in km for geo search"),
+    start_after: z.string().optional().describe("ISO date, events starting after"),
+    start_before: z.string().optional().describe("ISO date, events starting before"),
+    cursor: z.string().optional().describe("Pagination cursor"),
+    limit: z.number().optional().describe("Max results (default 20)"),
+  });
+  type AtlasSearchInput = z.infer<typeof atlasSearchSchema>;
+
   tools.push(
     new DynamicStructuredTool({
       name: "atlas_search",
       description:
         "Search for events across federated sources via Atlas Protocol. Returns events with ticket info from multiple platforms.",
-      schema: z.object({
-        query: z.string().optional().describe("Free-text search query"),
-        city: z.string().optional().describe("City name to filter by"),
-        lat: z.number().optional().describe("Latitude for geo search"),
-        lng: z.number().optional().describe("Longitude for geo search"),
-        radius_km: z.number().optional().describe("Radius in km for geo search"),
-        start_after: z.string().optional().describe("ISO date, events starting after"),
-        start_before: z.string().optional().describe("ISO date, events starting before"),
-        cursor: z.string().optional().describe("Pagination cursor"),
-        limit: z.number().optional().describe("Max results (default 20)"),
-      }),
-      func: async (input) => {
+      schema: atlasSearchSchema,
+      func: async (input: AtlasSearchInput) => {
         const searchQuery: Record<string, string | number | boolean | undefined> = {};
         if (input.query) searchQuery["q"] = input.query;
         if (input.city) searchQuery["city"] = input.city;
@@ -123,18 +126,21 @@ export function buildAtlasLangChainTools<TState = unknown>(
     }),
   );
 
+  const atlasCompareSchema = z.object({
+    event_ids: z
+      .array(z.string().regex(/^[a-zA-Z0-9_-]+$/))
+      .min(2)
+      .max(5)
+      .describe("Array of 2-5 Atlas event IDs to compare"),
+  });
+  type AtlasCompareInput = z.infer<typeof atlasCompareSchema>;
+
   tools.push(
     new DynamicStructuredTool({
       name: "atlas_compare_tickets",
       description: "Compare ticket prices and availability across 2-5 events fetched in parallel.",
-      schema: z.object({
-        event_ids: z
-          .array(z.string().regex(/^[a-zA-Z0-9_-]+$/))
-          .min(2)
-          .max(5)
-          .describe("Array of 2-5 Atlas event IDs to compare"),
-      }),
-      func: async (input) => {
+      schema: atlasCompareSchema,
+      func: async (input: AtlasCompareInput) => {
         const results = await Promise.allSettled(
           input.event_ids.map(async (eventId: string) => {
             const response = await http.request({
@@ -146,7 +152,7 @@ export function buildAtlasLangChainTools<TState = unknown>(
           }),
         );
 
-        const events = results.map((result, index) => {
+        const events: unknown[] = results.map((result, index) => {
           if (result.status === "fulfilled") return result.value;
           const id = input.event_ids[index] ?? "unknown";
           const reason = result.reason as { message?: string } | undefined;
@@ -164,23 +170,26 @@ export function buildAtlasLangChainTools<TState = unknown>(
     }),
   );
 
+  const atlasPurchaseSchema = z.object({
+    event_id: z
+      .string()
+      .regex(/^[a-zA-Z0-9_-]+$/)
+      .describe("Atlas event ID"),
+    ticket_type_id: z
+      .string()
+      .regex(/^[a-zA-Z0-9_-]+$/)
+      .describe("Ticket type ID"),
+    quantity: z.number().min(1).max(10).describe("Number of tickets (1-10)"),
+  });
+  type AtlasPurchaseInput = z.infer<typeof atlasPurchaseSchema>;
+
   tools.push(
     new DynamicStructuredTool({
       name: "atlas_purchase",
       description:
         "Purchase tickets for an Atlas event. Returns checkout URL for paid events or confirms free ticket acquisition.",
-      schema: z.object({
-        event_id: z
-          .string()
-          .regex(/^[a-zA-Z0-9_-]+$/)
-          .describe("Atlas event ID"),
-        ticket_type_id: z
-          .string()
-          .regex(/^[a-zA-Z0-9_-]+$/)
-          .describe("Ticket type ID"),
-        quantity: z.number().min(1).max(10).describe("Number of tickets (1-10)"),
-      }),
-      func: async (input) => {
+      schema: atlasPurchaseSchema,
+      func: async (input: AtlasPurchaseInput) => {
         const authHeader = getAuthHeader?.();
         if (!authHeader || typeof authHeader !== "string") {
           throw new Error("Authentication required to purchase tickets");
@@ -247,15 +256,18 @@ export function buildAtlasLangChainTools<TState = unknown>(
     }),
   );
 
+  const atlasReceiptSchema = z.object({
+    hold_id: z.string().describe("Hold ID from a previous purchase"),
+  });
+  type AtlasReceiptInput = z.infer<typeof atlasReceiptSchema>;
+
   tools.push(
     new DynamicStructuredTool({
       name: "atlas_get_receipt",
       description:
         "Check the status of a ticket purchase by hold ID. Returns pending, completed, or expired.",
-      schema: z.object({
-        hold_id: z.string().describe("Hold ID from a previous purchase"),
-      }),
-      func: async (input) => {
+      schema: atlasReceiptSchema,
+      func: async (input: AtlasReceiptInput) => {
         const authHeader = getAuthHeader?.();
         if (!authHeader || typeof authHeader !== "string") {
           throw new Error("Authentication required to check receipt");

@@ -2,7 +2,7 @@ import { createPublicClient, http } from "viem";
 import { arbitrum, base, optimism, polygon } from "viem/chains";
 import type { Chain, PublicClient, Transport } from "viem";
 
-import { resolveLogger, type ServerSdkConfig, type EvmUsdcMethodConfig } from "./config.js";
+import { resolveLogger, type ServerSdkConfig } from "./config.js";
 import type {
   AtlasPaymentMethodType,
   AtlasPaymentProof,
@@ -155,8 +155,7 @@ export async function verifyPayment(
           return { valid: false, error: "Missing transaction_hash" };
         }
 
-        const evmConfig =
-          method?.type !== "stripe_spt" ? (method as EvmUsdcMethodConfig | undefined) : undefined;
+        const evmConfig = method?.type !== "stripe_spt" ? method : undefined;
         const recipient = evmConfig?.receiverAddress ?? params.recipient_address;
         if (!recipient) {
           return {
@@ -168,10 +167,10 @@ export async function verifyPayment(
         const spec = CHAIN_SPECS[proof.type];
         const client =
           deps.evmClient?.(proof.type) ??
-          (createPublicClient({
+          createPublicClient({
             chain: spec.chain,
             transport: http(evmConfig?.rpcUrl ?? spec.defaultRpcUrl),
-          }) as PublicClient<Transport, Chain>);
+          });
 
         return verifyEvmUsdcTransfer(client, {
           txHash: proof.transaction_hash,

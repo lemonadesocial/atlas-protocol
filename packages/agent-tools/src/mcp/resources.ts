@@ -82,7 +82,7 @@ export function registerAtlasMcpResources(
       description: "Atlas Protocol fee structure and pricing information",
       mimeType: "application/json",
     },
-    async () => ({
+    () => ({
       contents: [
         {
           uri: "atlas://pricing",

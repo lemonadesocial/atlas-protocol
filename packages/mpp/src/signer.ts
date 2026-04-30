@@ -21,7 +21,7 @@
  * are also supported.
  */
 
-import { CompactSign, compactVerify, importJWK, type JWK, type KeyLike } from "jose";
+import { CompactSign, compactVerify, importJWK, type KeyLike } from "jose";
 
 import { canonicalize, decode } from "./envelope.js";
 import type { MppEnvelope, SignedMppEnvelope } from "./types/envelope.js";
@@ -143,9 +143,9 @@ export async function verifyEnvelope(
 
 async function resolveSigningKey(key: SigningKey, alg: SigningAlg): Promise<KeyLike | Uint8Array> {
   if ("jwk" in key) {
-    const imported = await importJWK(key.jwk as JWK, alg);
+    const imported = await importJWK(key.jwk, alg);
     // `importJWK` may return either a `KeyLike` or a `Uint8Array` (for HS256).
-    return imported as KeyLike | Uint8Array;
+    return imported;
   }
   return key.key;
 }
@@ -155,8 +155,8 @@ async function resolveVerificationKey(
   alg: SigningAlg,
 ): Promise<KeyLike | Uint8Array> {
   if ("jwk" in key) {
-    const imported = await importJWK(key.jwk as JWK, alg);
-    return imported as KeyLike | Uint8Array;
+    const imported = await importJWK(key.jwk, alg);
+    return imported;
   }
   return key.key;
 }

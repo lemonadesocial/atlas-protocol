@@ -11,23 +11,25 @@ const config: AtlasToolsConfig = {
 
 const originalFetch = globalThis.fetch;
 
+function urlToString(input: string | URL | Request): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
+
 function mockFetch(
   handler: (url: string, init?: RequestInit) => { status: number; body: unknown },
 ): void {
-  globalThis.fetch = (async (
-    url: string | URL | Request,
-    init?: RequestInit,
-  ): Promise<Response> => {
-    const urlStr = typeof url === "string" ? url : url.toString();
-    const result = handler(urlStr, init);
-    return {
+  globalThis.fetch = (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    const result = handler(urlToString(url), init);
+    return Promise.resolve({
       ok: result.status >= 200 && result.status < 300,
       status: result.status,
-      json: async () => result.body,
-      text: async () => JSON.stringify(result.body),
+      json: () => Promise.resolve(result.body),
+      text: () => Promise.resolve(JSON.stringify(result.body)),
       headers: new Headers(),
-    } as Response;
-  }) as typeof fetch;
+    } as Response);
+  };
 }
 
 afterEach(() => {
@@ -71,9 +73,12 @@ describe("buildAtlasLangChainTools", () => {
     const search = tools.find((t) => t.name === "atlas_search");
     expect(search).toBeDefined();
 
-    const result = await search!.invoke({ query: "ambient" });
-    const parsed = JSON.parse(result as string);
-    expect(parsed.items[0].id).toBe("evt_1");
+    const result: unknown = await search!.invoke({ query: "ambient" });
+    const parsed = JSON.parse(result as string) as {
+      items: Array<{ id: string }>;
+      total: number;
+    };
+    expect(parsed.items[0]?.id).toBe("evt_1");
     expect(parsed.total).toBe(1);
   });
 
@@ -107,12 +112,12 @@ describe("buildAtlasLangChainTools", () => {
     });
     const purchase = tools.find((t) => t.name === "atlas_purchase")!;
 
-    const result = await purchase.invoke({
+    const result: unknown = await purchase.invoke({
       event_id: "evt_free",
       ticket_type_id: "tt_free",
       quantity: 1,
     });
-    const parsed = JSON.parse(result as string);
+    const parsed = JSON.parse(result as string) as { status: string; redirect_url: string };
     expect(parsed.status).toBe("completed");
     expect(parsed.redirect_url).toContain("example.test");
   });

@@ -101,7 +101,7 @@ describe("registerAtlasMcpResources", () => {
     const out = (await pricing.handler("atlas://pricing", {})) as {
       contents: Array<{ text: string }>;
     };
-    const parsed = JSON.parse(out.contents[0]!.text);
+    const parsed = JSON.parse(out.contents[0]!.text) as { protocol_fee_percent: number };
     expect(parsed.protocol_fee_percent).toBe(2.5);
   });
 
@@ -120,7 +120,7 @@ describe("registerAtlasMcpResources", () => {
       server as unknown as Parameters<typeof registerAtlasMcpResources>[0],
       {
         config,
-        loadVerificationStatus: async () => ({ is_verified: true, level: "gold" }),
+        loadVerificationStatus: () => Promise.resolve({ is_verified: true, level: "gold" }),
       },
     );
     const verification = server.resources.find((r) => r.name === "atlas-verification");
@@ -129,7 +129,7 @@ describe("registerAtlasMcpResources", () => {
     const out = (await verification!.handler("atlas://verification", {
       requestInfo: { headers: { authorization: "Bearer x" } },
     })) as { contents: Array<{ text: string }> };
-    const parsed = JSON.parse(out.contents[0]!.text);
+    const parsed = JSON.parse(out.contents[0]!.text) as { is_verified: boolean; level: string };
     expect(parsed.is_verified).toBe(true);
     expect(parsed.level).toBe("gold");
   });

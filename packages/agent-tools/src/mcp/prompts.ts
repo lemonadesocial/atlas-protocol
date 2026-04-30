@@ -26,7 +26,7 @@ export function registerAtlasMcpPrompts(server: McpServer, config: AtlasToolsCon
         interest: z.string().optional().describe("Type of event or topic of interest"),
       },
     },
-    async ({ city, interest }) => ({
+    ({ city, interest }) => ({
       messages: [
         {
           role: "user",
@@ -51,7 +51,7 @@ export function registerAtlasMcpPrompts(server: McpServer, config: AtlasToolsCon
           .describe("Comma-separated event names or IDs to compare"),
       },
     },
-    async ({ event_names }) => ({
+    ({ event_names }) => ({
       messages: [
         {
           role: "user",
@@ -73,7 +73,7 @@ export function registerAtlasMcpPrompts(server: McpServer, config: AtlasToolsCon
         event_name: z.string().optional().describe("Name of the event to buy tickets for"),
       },
     },
-    async ({ event_name }) => ({
+    ({ event_name }) => ({
       messages: [
         {
           role: "user",

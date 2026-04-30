@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import type { Chain, PublicClient, Transport } from "viem";
 
 import { verifyPayment, SUPPORTED_PAYMENT_METHODS } from "../payment-verify.js";
 import type { ServerSdkConfig } from "../config.js";
 import type { AtlasPaymentVerifyResult } from "../types/index.js";
+
+type FakeEvmClient = PublicClient<Transport, Chain>;
 
 const TEST_RECEIVER = "0x1111111111111111111111111111111111111111";
 const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
@@ -43,15 +46,11 @@ function fakeEvmClient(opts: {
     logs: Array<{ address: string; topics: string[]; data: string }>;
   } | null;
   currentBlock: bigint;
-}) {
+}): FakeEvmClient {
   return {
-    getTransactionReceipt: vi.fn(async () => opts.receipt),
-    getBlockNumber: vi.fn(async () => opts.currentBlock),
-  } as unknown as Parameters<
-    NonNullable<Parameters<typeof verifyPayment>[3]>["evmClient"]
-  >[0] extends never
-    ? never
-    : ReturnType<NonNullable<Parameters<typeof verifyPayment>[3]>["evmClient"]>;
+    getTransactionReceipt: vi.fn(() => Promise.resolve(opts.receipt)),
+    getBlockNumber: vi.fn(() => Promise.resolve(opts.currentBlock)),
+  } as unknown as FakeEvmClient;
 }
 
 describe("SUPPORTED_PAYMENT_METHODS", () => {
@@ -74,7 +73,7 @@ describe("verifyPayment — replay protection", () => {
       makeConfig(),
       { type: "base_usdc", transaction_hash: "0xabc" },
       { expected_amount_usd: 50, challenge_id: "ch_1" },
-      { isReplay: async () => true },
+      { isReplay: () => Promise.resolve(true) },
     );
 
     expect(result.valid).toBe(false);
@@ -86,8 +85,7 @@ describe("verifyPayment — input validation", () => {
   it("rejects unsupported payment types", async () => {
     const result = await verifyPayment(
       makeConfig(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { type: "bitcoin_lightning" as any },
+      { type: "bitcoin_lightning" } as Parameters<typeof verifyPayment>[1],
       { expected_amount_usd: 50, challenge_id: "ch_1" },
     );
 
@@ -132,10 +130,11 @@ describe("verifyPayment — input validation", () => {
 describe("verifyPayment — Stripe verification", () => {
   it("delegates to verifyStripe and forwards its result", async () => {
     const verifyStripe = vi.fn(
-      async (id: string, _amount: number): Promise<AtlasPaymentVerifyResult> => ({
-        valid: true,
-        verified_amount_usd: 50,
-      }),
+      (_id: string, _amount: number): Promise<AtlasPaymentVerifyResult> =>
+        Promise.resolve({
+          valid: true,
+          verified_amount_usd: 50,
+        }),
     );
 
     const result = await verifyPayment(
@@ -320,9 +319,7 @@ describe("verifyPayment — error handling", () => {
       { type: "stripe_spt", payment_intent_id: "pi_test" },
       { expected_amount_usd: 50, challenge_id: "ch_1" },
       {
-        isReplay: async () => {
-          throw new Error("database offline");
-        },
+        isReplay: () => Promise.reject(new Error("database offline")),
       },
     );
 

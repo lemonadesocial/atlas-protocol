@@ -12,19 +12,23 @@ export default tseslint.config(
       "**/.tsbuildinfo",
       "contracts/lib/**",
       "pnpm-lock.yaml",
+      "*.config.js",
     ],
   },
-  ...tseslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
   {
     languageOptions: {
+      parserOptions: {
+        project: ["./tsconfig.eslint.json"],
+        tsconfigRootDir: import.meta.dirname,
+      },
       globals: { ...globals.node },
     },
     rules: {
       "@typescript-eslint/no-unused-vars": [
-        "warn",
+        "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
-      "@typescript-eslint/no-explicit-any": "warn",
     },
   },
   prettier,

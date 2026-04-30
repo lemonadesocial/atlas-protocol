@@ -50,7 +50,7 @@ export interface AtlasCancellationPolicy {
   refundable: boolean;
   refund_type: string;
   refund_deadline: string | null;
-  partial_refund_schedule: unknown | null;
+  partial_refund_schedule: unknown;
   cancellation_fee: number;
   policy_text: string;
   organizer_cancellation_refund: string;

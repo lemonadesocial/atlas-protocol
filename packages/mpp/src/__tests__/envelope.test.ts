@@ -81,15 +81,9 @@ describe("encode + decode", () => {
   });
 
   it("rejects missing required fields", () => {
-    expect(() => encode({ ...FULL_PAYLOAD, rail: "" } as unknown as MppPayload)).toThrow(
-      /rail is required/,
-    );
-    expect(() => encode({ ...FULL_PAYLOAD, paymentId: "" } as unknown as MppPayload)).toThrow(
-      /paymentId is required/,
-    );
-    expect(() => encode({ ...FULL_PAYLOAD, amount: "" } as unknown as MppPayload)).toThrow(
-      /amount is required/,
-    );
+    expect(() => encode({ ...FULL_PAYLOAD, rail: "" })).toThrow(/rail is required/);
+    expect(() => encode({ ...FULL_PAYLOAD, paymentId: "" })).toThrow(/paymentId is required/);
+    expect(() => encode({ ...FULL_PAYLOAD, amount: "" })).toThrow(/amount is required/);
   });
 
   it("rejects rail strings that violate the MPP method identifier pattern", () => {
@@ -105,13 +99,13 @@ describe("encode + decode", () => {
     expect(() =>
       decode({
         header: undefined as unknown as Parameters<typeof decode>[0]["header"],
-        request: {} as Parameters<typeof decode>[0]["request"],
+        request: {},
       }),
     ).toThrow(/header is required/);
     expect(() =>
       decode({
         header: { mpp_ver: "1.0", id: "x", realm: "x", method: "x", intent: "charge" },
-        request: { amount: 1 as unknown as string, currency: "usd" },
+        request: { amount: 1, currency: "usd" },
       }),
     ).toThrow(/request.amount must be a string/);
   });

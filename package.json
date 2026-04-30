@@ -2,6 +2,7 @@
   "name": "atlas-protocol",
   "private": true,
   "version": "0.0.0",
+  "type": "module",
   "description": "ATLAS Protocol — open agent commerce protocol for events.",
   "license": "MIT",
   "engines": {

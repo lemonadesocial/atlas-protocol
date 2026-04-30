@@ -23,14 +23,14 @@ describe("Connector interface", () => {
         listTicketTypes: true,
         realtime: false,
       },
-      async search() {
-        return [];
+      search() {
+        return Promise.resolve([]);
       },
-      async getEvent() {
-        return null;
+      getEvent() {
+        return Promise.resolve(null);
       },
-      async listTicketTypes() {
-        return [];
+      listTicketTypes() {
+        return Promise.resolve([]);
       },
     };
 

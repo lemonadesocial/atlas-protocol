@@ -41,23 +41,25 @@ describe("http-client", () => {
 describe("atlas tool flows", () => {
   const originalFetch = globalThis.fetch;
 
+  function urlToString(input: string | URL | Request): string {
+    if (typeof input === "string") return input;
+    if (input instanceof URL) return input.href;
+    return input.url;
+  }
+
   function mockFetch(
     handler: (url: string, init?: RequestInit) => { status: number; body: unknown },
   ): void {
-    globalThis.fetch = (async (
-      url: string | URL | Request,
-      init?: RequestInit,
-    ): Promise<Response> => {
-      const urlStr = typeof url === "string" ? url : url.toString();
-      const result = handler(urlStr, init);
-      return {
+    globalThis.fetch = (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
+      const result = handler(urlToString(url), init);
+      return Promise.resolve({
         ok: result.status >= 200 && result.status < 300,
         status: result.status,
-        json: async () => result.body,
-        text: async () => JSON.stringify(result.body),
+        json: () => Promise.resolve(result.body),
+        text: () => Promise.resolve(JSON.stringify(result.body)),
         headers: new Headers(),
-      } as Response;
-    }) as typeof fetch;
+      } as Response);
+    };
   }
 
   beforeEach(() => {

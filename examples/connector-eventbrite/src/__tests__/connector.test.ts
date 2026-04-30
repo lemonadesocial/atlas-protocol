@@ -11,6 +11,12 @@ import type { EventbriteEvent, EventbriteTicketClass } from "../api.js";
 
 const OAUTH: AuthContext = { type: "oauth2", accessToken: "token-abc" };
 
+function urlToString(input: string | URL | Request): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
+
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), {
     status: 200,
@@ -51,18 +57,20 @@ const SAMPLE_TICKET: EventbriteTicketClass = {
 
 describe("EventbriteConnector", () => {
   it("search() returns AtlasEvent[] and forwards filters to the API", async () => {
-    const fetchImpl = vi.fn(async (url: string | URL | Request) => {
-      const u = new URL(String(url));
+    const fetchImpl = vi.fn((url: string | URL | Request) => {
+      const u = new URL(urlToString(url));
       expect(u.pathname).toBe("/v3/users/me/events/");
       expect(u.searchParams.get("name_filter")).toBe("jazz");
       expect(u.searchParams.get("start_date.range_start")).toBeTruthy();
       expect(u.searchParams.get("page_size")).toBe("25");
-      return jsonResponse({ events: [SAMPLE_EVENT, { ...SAMPLE_EVENT, id: "ev-2" }] });
+      return Promise.resolve(
+        jsonResponse({ events: [SAMPLE_EVENT, { ...SAMPLE_EVENT, id: "ev-2" }] }),
+      );
     });
 
     const connector = new EventbriteConnector({
       baseUrl: "https://atlas.example.com",
-      fetchImpl: fetchImpl as unknown as typeof fetch,
+      fetchImpl: fetchImpl,
     });
 
     const events = await connector.search(
@@ -81,15 +89,15 @@ describe("EventbriteConnector", () => {
   });
 
   it("getEvent() returns an AtlasEvent on 200", async () => {
-    const fetchImpl = vi.fn(async (url: string | URL | Request) => {
-      const u = new URL(String(url));
+    const fetchImpl = vi.fn((url: string | URL | Request) => {
+      const u = new URL(urlToString(url));
       expect(u.pathname).toBe("/v3/events/ev-1/");
-      return jsonResponse(SAMPLE_EVENT);
+      return Promise.resolve(jsonResponse(SAMPLE_EVENT));
     });
 
     const connector = new EventbriteConnector({
       baseUrl: "https://atlas.example.com",
-      fetchImpl: fetchImpl as unknown as typeof fetch,
+      fetchImpl: fetchImpl,
     });
     const result = await connector.getEvent("ev-1", OAUTH);
     expect(result).not.toBeNull();
@@ -97,29 +105,33 @@ describe("EventbriteConnector", () => {
   });
 
   it("getEvent() returns null on 404 instead of throwing", async () => {
-    const fetchImpl = vi.fn(async () => errorResponse(404, JSON.stringify({ error: "NOT_FOUND" })));
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(errorResponse(404, JSON.stringify({ error: "NOT_FOUND" }))),
+    );
     const connector = new EventbriteConnector({
       baseUrl: "https://atlas.example.com",
-      fetchImpl: fetchImpl as unknown as typeof fetch,
+      fetchImpl: fetchImpl,
     });
     const result = await connector.getEvent("missing", OAUTH);
     expect(result).toBeNull();
   });
 
   it("throws AuthExpiredError on 401", async () => {
-    const fetchImpl = vi.fn(async () => errorResponse(401, "unauthorized"));
+    const fetchImpl = vi.fn(() => Promise.resolve(errorResponse(401, "unauthorized")));
     const connector = new EventbriteConnector({
       baseUrl: "https://atlas.example.com",
-      fetchImpl: fetchImpl as unknown as typeof fetch,
+      fetchImpl: fetchImpl,
     });
     await expect(connector.getEvent("ev-1", OAUTH)).rejects.toBeInstanceOf(AuthExpiredError);
   });
 
   it("throws RateLimitError with retryAfterSeconds on 429", async () => {
-    const fetchImpl = vi.fn(async () => errorResponse(429, "too many", { "retry-after": "37" }));
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(errorResponse(429, "too many", { "retry-after": "37" })),
+    );
     const connector = new EventbriteConnector({
       baseUrl: "https://atlas.example.com",
-      fetchImpl: fetchImpl as unknown as typeof fetch,
+      fetchImpl: fetchImpl,
     });
     try {
       await connector.search({}, OAUTH);
@@ -131,15 +143,17 @@ describe("EventbriteConnector", () => {
   });
 
   it("listTicketTypes() returns AtlasTicketType[]", async () => {
-    const fetchImpl = vi.fn(async (url: string | URL | Request) => {
-      const u = new URL(String(url));
+    const fetchImpl = vi.fn((url: string | URL | Request) => {
+      const u = new URL(urlToString(url));
       expect(u.pathname).toBe("/v3/events/ev-1/ticket_classes/");
-      return jsonResponse({ ticket_classes: [SAMPLE_TICKET, { ...SAMPLE_TICKET, id: "tc-2" }] });
+      return Promise.resolve(
+        jsonResponse({ ticket_classes: [SAMPLE_TICKET, { ...SAMPLE_TICKET, id: "tc-2" }] }),
+      );
     });
 
     const connector = new EventbriteConnector({
       baseUrl: "https://atlas.example.com",
-      fetchImpl: fetchImpl as unknown as typeof fetch,
+      fetchImpl: fetchImpl,
     });
     const tickets = await connector.listTicketTypes("ev-1", OAUTH);
     expect(tickets).toHaveLength(2);
@@ -152,7 +166,7 @@ describe("EventbriteConnector", () => {
   it("rejects non-oauth2 auth contexts", async () => {
     const connector = new EventbriteConnector({
       baseUrl: "https://atlas.example.com",
-      fetchImpl: vi.fn() as unknown as typeof fetch,
+      fetchImpl: vi.fn(),
     });
     await expect(connector.search({}, { type: "apikey", apiKey: "k" })).rejects.toBeInstanceOf(
       AuthExpiredError,

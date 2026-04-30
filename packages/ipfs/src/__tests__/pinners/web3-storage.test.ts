@@ -7,27 +7,33 @@ interface CapturedCall {
   init: RequestInit;
 }
 
+function urlToString(input: string | URL | Request): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
+
 function makeFetch(responses: Array<Partial<Response> & { json?: unknown; text?: string }>) {
   const calls: CapturedCall[] = [];
   let i = 0;
-  const fn = (async (url: string | URL | Request, init: RequestInit = {}): Promise<Response> => {
-    calls.push({ url: String(url), init });
+  const fn = (url: string | URL | Request, init: RequestInit = {}): Promise<Response> => {
+    calls.push({ url: urlToString(url), init });
     const r = responses[i++] ?? { ok: true, status: 200 };
-    return {
+    return Promise.resolve({
       ok: r.ok ?? true,
       status: r.status ?? 200,
       statusText: r.statusText ?? "OK",
-      json: async () => r.json,
-      text: async () => r.text ?? "",
-    } as Response;
-  }) as unknown as typeof fetch;
+      json: () => Promise.resolve(r.json),
+      text: () => Promise.resolve(r.text ?? ""),
+    } as Response);
+  };
   return { fetch: fn, calls };
 }
 
 describe("Web3StoragePinner", () => {
   it("requires apiToken and spaceDID", () => {
-    expect(() => new Web3StoragePinner({ apiToken: "", spaceDID: "did" } as never)).toThrow();
-    expect(() => new Web3StoragePinner({ apiToken: "t", spaceDID: "" } as never)).toThrow();
+    expect(() => new Web3StoragePinner({ apiToken: "", spaceDID: "did" })).toThrow();
+    expect(() => new Web3StoragePinner({ apiToken: "t", spaceDID: "" })).toThrow();
   });
 
   it("pin uploads with Bearer + X-Space and returns cid", async () => {

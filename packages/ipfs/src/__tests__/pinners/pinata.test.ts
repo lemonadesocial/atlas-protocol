@@ -7,26 +7,32 @@ interface CapturedCall {
   init: RequestInit;
 }
 
+function urlToString(input: string | URL | Request): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
+
 function makeFetch(responses: Array<Partial<Response> & { json?: unknown; text?: string }>) {
   const calls: CapturedCall[] = [];
   let i = 0;
-  const fn = (async (url: string | URL | Request, init: RequestInit = {}): Promise<Response> => {
-    calls.push({ url: String(url), init });
+  const fn = (url: string | URL | Request, init: RequestInit = {}): Promise<Response> => {
+    calls.push({ url: urlToString(url), init });
     const r = responses[i++] ?? { ok: true, status: 200 };
-    return {
+    return Promise.resolve({
       ok: r.ok ?? true,
       status: r.status ?? 200,
       statusText: r.statusText ?? "OK",
-      json: async () => r.json,
-      text: async () => r.text ?? "",
-    } as Response;
-  }) as unknown as typeof fetch;
+      json: () => Promise.resolve(r.json),
+      text: () => Promise.resolve(r.text ?? ""),
+    } as Response);
+  };
   return { fetch: fn, calls };
 }
 
 describe("PinataPinner", () => {
   it("throws if neither jwt nor apiKey+secret is provided", () => {
-    expect(() => new PinataPinner({} as never)).toThrow(/credentials/);
+    expect(() => new PinataPinner({})).toThrow(/credentials/);
   });
 
   it("uses Bearer auth when jwt is provided", async () => {
@@ -70,7 +76,10 @@ describe("PinataPinner", () => {
     const form = body as FormData;
     const meta = form.get("pinataMetadata");
     expect(typeof meta).toBe("string");
-    const parsed = JSON.parse(meta as string);
+    const parsed = JSON.parse(meta as string) as {
+      name: string;
+      keyvalues: Record<string, string>;
+    };
     expect(parsed.name).toBe("event.json");
     expect(parsed.keyvalues).toEqual({ kind: "event" });
   });
@@ -120,7 +129,7 @@ describe("PinataPinner", () => {
   it("default fetch falls back to global fetch", () => {
     const original = globalThis.fetch;
     const spy = vi.fn();
-    globalThis.fetch = spy as unknown as typeof fetch;
+    globalThis.fetch = spy;
     try {
       // Just verify construction does not throw and uses some fetch impl.
       expect(() => new PinataPinner({ jwt: "t" })).not.toThrow();
