@@ -1,0 +1,37 @@
+{
+  "name": "@atlasprotocol/example-claude-desktop-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reference example: ATLAS Protocol MCP server for Claude Desktop.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "atlas-mcp-server": "./dist/server.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@atlasprotocol/agent-tools": "^0.1.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.0.0"
+  }
+}
