@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.1.0...server-sdk-v0.1.1) (2026-04-30)
+
+
+### Bug Fixes
+
+* clarify intent across remaining [@atlasprotocol](https://github.com/atlasprotocol) packages ([#20](https://github.com/lemonadesocial/atlas-protocol/issues/20)) ([782c89c](https://github.com/lemonadesocial/atlas-protocol/commit/782c89ce8880a60f5a8c9b108387e099bac5d266))
+
 ## 0.1.0 (2026-04-30)
 
 
