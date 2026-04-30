@@ -48,8 +48,8 @@ interface IFeeRouter {
     /// @notice Current treasury address.
     function treasury() external view returns (address);
 
-    /// @notice The USDC token address used for settlements.
-    function usdc() external view returns (address);
+    /// @notice The ERC-20 stablecoin token address used for settlements on this chain.
+    function stablecoin() external view returns (address);
 
     /// @notice Returns true if the given paymentId has already been settled.
     function isSettled(bytes32 paymentId) external view returns (bool);

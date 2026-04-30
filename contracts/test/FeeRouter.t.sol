@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {Test} from "forge-std/Test.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import { Test } from "forge-std/Test.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
-import {FeeRouter} from "../src/FeeRouter.sol";
-import {IFeeRouter} from "../src/interfaces/IFeeRouter.sol";
-import {MockUSDC} from "./utils/MockUSDC.sol";
+import { FeeRouter } from "../src/FeeRouter.sol";
+import { IFeeRouter } from "../src/interfaces/IFeeRouter.sol";
+import { MockStablecoin } from "./utils/MockStablecoin.sol";
 
 /// @dev Helper used by the upgrade authorization test.
 contract FeeRouterV2 is FeeRouter {
@@ -19,7 +19,7 @@ contract FeeRouterV2 is FeeRouter {
 
 contract FeeRouterTest is Test {
     FeeRouter internal router;
-    MockUSDC internal usdc;
+    MockStablecoin internal stablecoin;
 
     address internal admin = address(0xA11CE);
     address internal upgrader = address(0xB0B);
@@ -38,18 +38,17 @@ contract FeeRouterTest is Test {
     event FeeScheduleUpdated(uint16 oldBps, uint16 newBps);
 
     function setUp() public {
-        usdc = new MockUSDC();
+        stablecoin = new MockStablecoin();
 
         FeeRouter impl = new FeeRouter();
-        bytes memory initData = abi.encodeCall(
-            FeeRouter.initialize, (admin, upgrader, pauser, treasury, address(usdc))
-        );
+        bytes memory initData =
+            abi.encodeCall(FeeRouter.initialize, (admin, upgrader, pauser, treasury, address(stablecoin)));
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
         router = FeeRouter(address(proxy));
 
-        usdc.mint(payer, 1_000_000e6);
+        stablecoin.mint(payer, 1_000_000e6);
         vm.prank(payer);
-        usdc.approve(address(router), type(uint256).max);
+        stablecoin.approve(address(router), type(uint256).max);
     }
 
     // ---------------------------------------------------------------------
@@ -67,9 +66,9 @@ contract FeeRouterTest is Test {
         vm.prank(payer);
         router.settle(organizer, amount, PAYMENT_ID_1);
 
-        assertEq(usdc.balanceOf(organizer), expectedOrganizer, "organizer balance");
-        assertEq(usdc.balanceOf(treasury), expectedFee, "treasury balance");
-        assertEq(usdc.balanceOf(address(router)), 0, "router holds nothing");
+        assertEq(stablecoin.balanceOf(organizer), expectedOrganizer, "organizer balance");
+        assertEq(stablecoin.balanceOf(treasury), expectedFee, "treasury balance");
+        assertEq(stablecoin.balanceOf(address(router)), 0, "router holds nothing");
         assertTrue(router.isSettled(PAYMENT_ID_1), "marked settled");
     }
 
@@ -110,8 +109,8 @@ contract FeeRouterTest is Test {
         assertTrue(router.isSettled(PAYMENT_ID_1));
     }
 
-    /// @dev Demonstrates the contract only ever pulls usdcToken: a payer with no USDC / no
-    ///      allowance cannot settle, satisfying the "USDC-only" requirement.
+    /// @dev Demonstrates the contract only ever pulls the configured stablecoin: a payer with
+    ///      no balance / no allowance cannot settle, satisfying the "stablecoin-only" requirement.
     function test_settle_unauthorizedToken_reverts() public {
         address brokePayer = address(0xBA5E);
         // No mint, no approve — settle must revert on transferFrom.
@@ -136,9 +135,7 @@ contract FeeRouterTest is Test {
     function test_setFeeSchedule_unauthorized_reverts() public {
         bytes32 adminRole = router.DEFAULT_ADMIN_ROLE();
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, stranger, adminRole
-            )
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, stranger, adminRole)
         );
         vm.prank(stranger);
         router.setFeeBps(350);
@@ -146,9 +143,7 @@ contract FeeRouterTest is Test {
 
     function test_setFeeSchedule_above_cap_reverts() public {
         uint16 maxBps = router.MAX_FEE_BPS();
-        vm.expectRevert(
-            abi.encodeWithSelector(IFeeRouter.FeeBpsTooHigh.selector, uint16(1001), maxBps)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IFeeRouter.FeeBpsTooHigh.selector, uint16(1001), maxBps));
         vm.prank(admin);
         router.setFeeBps(1001);
     }
@@ -186,12 +181,37 @@ contract FeeRouterTest is Test {
         bytes32 upgraderRole = router.UPGRADER_ROLE();
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, stranger, upgraderRole
-            )
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, stranger, upgraderRole)
         );
         vm.prank(stranger);
         router.upgradeToAndCall(address(v2), bytes(""));
+    }
+
+    // ---------------------------------------------------------------------
+    // CREATE2 determinism
+    // ---------------------------------------------------------------------
+
+    function test_create2_addressIsDeterministic() public pure {
+        // Same inputs to CREATE2 must always produce the same address.
+        // This is what makes FeeRouter's proxy address match across all EVM chains.
+        address stablecoinAddr = address(0xCAFE);
+        address treasuryAddr = address(0xBEEF);
+        address adminAddr = address(0xDEAD);
+        address upgraderAddr = address(0x1234);
+        address pauserAddr = address(0x5678);
+        address fakeImpl = address(0x1111111111111111111111111111111111111111);
+
+        bytes32 salt = keccak256(abi.encodePacked("atlas-protocol/FeeRouter v0.1.0"));
+        bytes memory initData =
+            abi.encodeCall(FeeRouter.initialize, (adminAddr, upgraderAddr, pauserAddr, treasuryAddr, stablecoinAddr));
+        bytes memory initCode = abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(fakeImpl, initData));
+        bytes32 codeHash = keccak256(initCode);
+        address factory = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
+
+        address addr1 = address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), factory, salt, codeHash)))));
+        address addr2 = address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), factory, salt, codeHash)))));
+
+        assertEq(addr1, addr2, "CREATE2 prediction must be deterministic");
     }
 
     // ---------------------------------------------------------------------
@@ -202,12 +222,12 @@ contract FeeRouterTest is Test {
         uint256 amount = bound(uint256(amountSeed), 1, type(uint128).max);
 
         // Refresh payer balance + allowance for arbitrary amounts.
-        usdc.mint(payer, amount);
+        stablecoin.mint(payer, amount);
         vm.prank(payer);
-        usdc.approve(address(router), type(uint256).max);
+        stablecoin.approve(address(router), type(uint256).max);
 
-        uint256 organizerBalBefore = usdc.balanceOf(organizer);
-        uint256 treasuryBalBefore = usdc.balanceOf(treasury);
+        uint256 organizerBalBefore = stablecoin.balanceOf(organizer);
+        uint256 treasuryBalBefore = stablecoin.balanceOf(treasury);
 
         bytes32 paymentId = keccak256(abi.encode(amount));
         vm.prank(payer);
@@ -216,8 +236,8 @@ contract FeeRouterTest is Test {
         uint256 protocolFee = (amount * 200) / 10_000;
         uint256 organizerAmount = amount - protocolFee;
 
-        assertEq(usdc.balanceOf(organizer) - organizerBalBefore, organizerAmount, "organizer share");
-        assertEq(usdc.balanceOf(treasury) - treasuryBalBefore, protocolFee, "treasury share");
+        assertEq(stablecoin.balanceOf(organizer) - organizerBalBefore, organizerAmount, "organizer share");
+        assertEq(stablecoin.balanceOf(treasury) - treasuryBalBefore, protocolFee, "treasury share");
         assertEq(organizerAmount + protocolFee, amount, "split sums to input");
     }
 }

@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
-import {IFeeRouter} from "./interfaces/IFeeRouter.sol";
+import { IFeeRouter } from "./interfaces/IFeeRouter.sol";
 
 /// @title FeeRouter
-/// @notice Stage 1 ATLAS fee router. Splits incoming USDC payments between an organizer and the protocol treasury
-///         according to a single configurable fee schedule. Payments are idempotent per paymentId.
+/// @notice Stage 1 ATLAS fee router. Splits incoming stablecoin payments between an organizer
+///         and the protocol treasury according to a single configurable fee schedule. Payments
+///         are idempotent per paymentId. The settlement token is supplied at initialization
+///         time so the contract is portable across EVM chains and stablecoin choices.
 contract FeeRouter is
     Initializable,
     UUPSUpgradeable,
@@ -40,8 +42,8 @@ contract FeeRouter is
     /// @notice Default protocol fee on initialization (2%).
     uint16 public constant INITIAL_FEE_BPS = 200;
 
-    /// @dev USDC token used for all settlements. Exposed via {usdc}.
-    IERC20 private _usdc;
+    /// @dev ERC-20 stablecoin used for all settlements. Exposed via {stablecoin}.
+    IERC20 private _stablecoin;
 
     /// @notice Treasury address that receives the protocol fee.
     address public treasury;
@@ -65,8 +67,8 @@ contract FeeRouter is
     /// @param upgrader Receives UPGRADER_ROLE.
     /// @param pauser Receives PAUSER_ROLE.
     /// @param treasury_ Treasury address that receives the protocol fee.
-    /// @param usdc_ USDC token address.
-    function initialize(address admin, address upgrader, address pauser, address treasury_, address usdc_)
+    /// @param stablecoin_ ERC-20 stablecoin token address used for settlements on this chain.
+    function initialize(address admin, address upgrader, address pauser, address treasury_, address stablecoin_)
         external
         initializer
     {
@@ -74,7 +76,7 @@ contract FeeRouter is
         if (upgrader == address(0)) revert ZeroAddress();
         if (pauser == address(0)) revert ZeroAddress();
         if (treasury_ == address(0)) revert ZeroAddress();
-        if (usdc_ == address(0)) revert ZeroAddress();
+        if (stablecoin_ == address(0)) revert ZeroAddress();
 
         __AccessControl_init();
         __Pausable_init();
@@ -83,7 +85,7 @@ contract FeeRouter is
         _grantRole(UPGRADER_ROLE, upgrader);
         _grantRole(PAUSER_ROLE, pauser);
 
-        _usdc = IERC20(usdc_);
+        _stablecoin = IERC20(stablecoin_);
         treasury = treasury_;
         feeBps = INITIAL_FEE_BPS;
     }
@@ -93,12 +95,7 @@ contract FeeRouter is
     // ---------------------------------------------------------------------
 
     /// @inheritdoc IFeeRouter
-    function settle(address organizer, uint256 amount, bytes32 paymentId)
-        external
-        override
-        nonReentrant
-        whenNotPaused
-    {
+    function settle(address organizer, uint256 amount, bytes32 paymentId) external override nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
         if (organizer == address(0)) revert ZeroAddress();
         if (_settled[paymentId]) revert PaymentAlreadySettled(paymentId);
@@ -110,7 +107,7 @@ contract FeeRouter is
         uint256 organizerAmount = amount - protocolFee;
 
         // Interactions.
-        IERC20 token = _usdc;
+        IERC20 token = _stablecoin;
         token.safeTransferFrom(msg.sender, address(this), amount);
         if (organizerAmount > 0) {
             token.safeTransfer(organizer, organizerAmount);
@@ -153,8 +150,8 @@ contract FeeRouter is
     // ---------------------------------------------------------------------
 
     /// @inheritdoc IFeeRouter
-    function usdc() external view override returns (address) {
-        return address(_usdc);
+    function stablecoin() external view override returns (address) {
+        return address(_stablecoin);
     }
 
     /// @inheritdoc IFeeRouter
@@ -167,5 +164,5 @@ contract FeeRouter is
     // ---------------------------------------------------------------------
 
     /// @dev Restricts upgrades to UPGRADER_ROLE.
-    function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) { }
 }
