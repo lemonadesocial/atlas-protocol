@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "node",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": false,
+  "include-component-in-tag": true,
+  "include-v-in-tag": true,
+  "separate-pull-requests": false,
+  "packages": {
+    "packages/agent-tools": { "package-name": "@atlasprotocol/agent-tools" },
+    "packages/server-sdk": { "package-name": "@atlasprotocol/server-sdk" },
+    "packages/mpp": { "package-name": "@atlasprotocol/mpp" },
+    "packages/ipfs": { "package-name": "@atlasprotocol/ipfs" },
+    "packages/connector-framework": { "package-name": "@atlasprotocol/connector-framework" }
+  },
+  "plugins": [
+    { "type": "node-workspace", "updatePeerDependencies": true }
+  ]
+}
