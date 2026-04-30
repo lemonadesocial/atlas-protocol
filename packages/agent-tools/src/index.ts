@@ -1,5 +1,5 @@
 /**
- * @atlas/agent-tools — public API.
+ * @atlasprotocol/agent-tools — public API.
  *
  * Speak ATLAS Protocol from any agent runtime: LangChain, MCP, or your own
  * HTTP layer.

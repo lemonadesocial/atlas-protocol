@@ -1,7 +1,7 @@
 import type { JWK, KeyLike } from 'jose';
 
 /**
- * Supported JWS signing algorithms for the @atlas/mpp envelope.
+ * Supported JWS signing algorithms for the @atlasprotocol/mpp envelope.
  *
  * - "ES256"  — ECDSA P-256 with SHA-256 (default; RFC 7518 §3.4)
  * - "EdDSA"  — Ed25519 / Ed448 (RFC 8037)

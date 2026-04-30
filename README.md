@@ -56,7 +56,7 @@ Node `>=22` and pnpm `>=9` are required. See [`CONTRIBUTING.md`](CONTRIBUTING.md
 | [05 IPFS Data Layer](specs/05-IPFS-DATA-LAYER.md) | IPFS as the permanence layer: publishing pipeline, CID generation, cluster operations, receipt storage, fallback resolution. |
 | [06 XMTP CRM](specs/06-XMTP-CRM-SPEC.md) | Decentralized CRM on XMTP: channel establishment, data model, key management, segment queries, messaging, privacy, portability. |
 | [07 Ad-Network](specs/07-AD-NETWORK-SPEC.md) | Protocol-native advertising: campaign model, pay-per-sale bidding, agent relevance, settlement (60/30/10 split), economics vs Meta/Google. |
-| [08 Agent Ecosystem](specs/08-AGENT-ECOSYSTEM-SPEC.md) | Two-sided agent layer: 9 MCP tools, lemonade-cli reference, @atlas/client SDK, @atlas/server-sdk, agent identity, Space as Platform. |
+| [08 Agent Ecosystem](specs/08-AGENT-ECOSYSTEM-SPEC.md) | Two-sided agent layer: 9 MCP tools, lemonade-cli reference, @atlasprotocol/client SDK, @atlasprotocol/server-sdk, agent identity, Space as Platform. |
 | [09 Fee Economics](specs/09-FEE-ECONOMICS-SPEC.md) | 2% protocol fee, reward tiers, referral program, promotion revenue, token phases (LMC, $LEMON), fee comparison tables. |
 | [10 Progressive Decentralization](specs/10-PROGRESSIVE-DECENTRALIZATION.md) | Five-stage trust migration: on-chain payments, fee splits, tickets, rewards, registry. Governance alignment, migration mechanics. |
 | [11 Governance](specs/11-GOVERNANCE-SPEC.md) | Four governance phases: Lemonade stewardship, advisory board, steering committee, ATLAS Foundation. Voting mechanics, emergency procedures. |
@@ -91,12 +91,12 @@ CONTRACTS            FeeRouter + AtlasTicket + RewardLedger + RegistryPointer + 
 
 **For agent developers:**
 ```bash
-npm install @atlas/client
+npm install @atlasprotocol/client
 ```
 
 **For platform integrators:**
 ```bash
-npm install @atlas/sdk
+npm install @atlasprotocol/sdk
 ```
 
 **For organizers and builders:**

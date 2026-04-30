@@ -50,7 +50,7 @@ The ATLAS MCP server is listed in agent tool registries. Any agent that supports
 
 ### Framework Integrations
 
-Integration guides and pre-built connectors for major agent frameworks: LangChain, CrewAI, AutoGen. The `@atlas/client` SDK and `lemonade-cli` are published to npm, PyPI, and Homebrew with structured JSON output for AI coding assistants.
+Integration guides and pre-built connectors for major agent frameworks: LangChain, CrewAI, AutoGen. The `@atlasprotocol/client` SDK and `lemonade-cli` are published to npm, PyPI, and Homebrew with structured JSON output for AI coding assistants.
 
 ### Agent Platform Partnerships
 

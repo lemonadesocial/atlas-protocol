@@ -1,6 +1,6 @@
-# @atlas/mpp Spec Notes
+# @atlasprotocol/mpp Spec Notes
 
-> Audit log for every spec decision made while implementing `@atlas/mpp`.
+> Audit log for every spec decision made while implementing `@atlasprotocol/mpp`.
 > Keep this file alongside the source — `MPP-GAP-XXX` references in code
 > resolve to numbered entries in `§Gaps / TODOs` below.
 
@@ -27,7 +27,7 @@ The canonical spec at mpp.dev does **not** publish a numeric version
 identifier — only a build label (`mpp.dev@<git-sha>`). The Stripe
 integration page pins the related API version at `2026-03-04.preview`.
 
-`@atlas/mpp` writes the literal `mpp_ver: "1.0"` into the protected
+`@atlasprotocol/mpp` writes the literal `mpp_ver: "1.0"` into the protected
 header of every envelope (see `MPP-GAP-001`). This is opaque to the
 canonical spec (which does not reserve a `mpp_ver` field) and is safe
 to ignore for upstream consumers.
@@ -57,7 +57,7 @@ to ignore for upstream consumers.
 
 ### Note on HMAC challenge IDs vs JWS
 
-The canonical spec binds challenge `id` to `realm | method | intent | request | expires | digest | opaque` via HMAC-SHA256, then expects the server (which holds the secret) to verify the id on inbound credentials. This package does **not** compute the HMAC — `@atlas/mpp` is a standalone envelope/sign/verify layer and the caller supplies the `paymentId`. The JWS layer in `signer.ts` is provided as a complementary cross-domain authenticity mechanism. A future minor release can add a thin `bindChallengeId({ secretKey })` helper if needed.
+The canonical spec binds challenge `id` to `realm | method | intent | request | expires | digest | opaque` via HMAC-SHA256, then expects the server (which holds the secret) to verify the id on inbound credentials. This package does **not** compute the HMAC — `@atlasprotocol/mpp` is a standalone envelope/sign/verify layer and the caller supplies the `paymentId`. The JWS layer in `signer.ts` is provided as a complementary cross-domain authenticity mechanism. A future minor release can add a thin `bindChallengeId({ secretKey })` helper if needed.
 
 ## Gaps / TODOs
 

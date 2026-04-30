@@ -1,4 +1,4 @@
-# @atlas/ipfs
+# @atlasprotocol/ipfs
 
 Deterministic CID generation and pinning service abstractions for the ATLAS Protocol.
 
@@ -10,16 +10,16 @@ This package provides two things:
 ## Install
 
 ```bash
-pnpm add @atlas/ipfs @atlas/server-sdk
+pnpm add @atlasprotocol/ipfs @atlasprotocol/server-sdk
 ```
 
-`@atlas/server-sdk` is a peer dependency — `generateEventCid` accepts `AtlasEvent` from there.
+`@atlasprotocol/server-sdk` is a peer dependency — `generateEventCid` accepts `AtlasEvent` from there.
 
 ## Quickstart — deterministic CID for an AtlasEvent
 
 ```ts
-import { generateEventCid } from '@atlas/ipfs';
-import type { AtlasEvent } from '@atlas/server-sdk';
+import { generateEventCid } from '@atlasprotocol/ipfs';
+import type { AtlasEvent } from '@atlasprotocol/server-sdk';
 
 const event: AtlasEvent = /* ... your AtlasEvent ... */;
 const cid = await generateEventCid(event);
@@ -31,7 +31,7 @@ The same logical event — regardless of key insertion order — always yields t
 ## Quickstart — deterministic CID for a receipt
 
 ```ts
-import { generateReceiptCid, type AtlasReceipt } from '@atlas/ipfs';
+import { generateReceiptCid, type AtlasReceipt } from '@atlasprotocol/ipfs';
 
 const receipt: AtlasReceipt = {
   purchase_id: 'p_123',
@@ -62,7 +62,7 @@ interface Pinner {
 ### Pinata
 
 ```ts
-import { PinataPinner } from '@atlas/ipfs';
+import { PinataPinner } from '@atlasprotocol/ipfs';
 
 const pinner = new PinataPinner({ jwt: process.env.PINATA_JWT! });
 const { cid, size } = await pinner.pin(payload, { name: 'event.json' });
@@ -71,7 +71,7 @@ const { cid, size } = await pinner.pin(payload, { name: 'event.json' });
 ### Web3.Storage
 
 ```ts
-import { Web3StoragePinner } from '@atlas/ipfs';
+import { Web3StoragePinner } from '@atlasprotocol/ipfs';
 
 const pinner = new Web3StoragePinner({
   apiToken: process.env.W3UP_TOKEN!,
@@ -83,7 +83,7 @@ await pinner.pin(payload);
 ### Filebase
 
 ```ts
-import { FilebasePinner } from '@atlas/ipfs';
+import { FilebasePinner } from '@atlasprotocol/ipfs';
 
 const pinner = new FilebasePinner({
   apiToken: process.env.FILEBASE_TOKEN!,
@@ -95,7 +95,7 @@ await pinner.pin(payload);
 ### Kubo (self-hosted)
 
 ```ts
-import { KuboPinner } from '@atlas/ipfs';
+import { KuboPinner } from '@atlasprotocol/ipfs';
 
 const pinner = new KuboPinner({ apiUrl: 'http://localhost:5001' });
 await pinner.pin(payload);

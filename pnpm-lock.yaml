@@ -17,10 +17,10 @@ importers:
 
   examples/connector-eventbrite:
     dependencies:
-      '@atlas/connector-framework':
+      '@atlasprotocol/connector-framework':
         specifier: workspace:*
         version: link:../../packages/connector-framework
-      '@atlas/server-sdk':
+      '@atlasprotocol/server-sdk':
         specifier: workspace:*
         version: link:../../packages/server-sdk
     devDependencies:
@@ -57,7 +57,7 @@ importers:
 
   packages/connector-framework:
     devDependencies:
-      '@atlas/server-sdk':
+      '@atlasprotocol/server-sdk':
         specifier: workspace:*
         version: link:../server-sdk
       '@types/node':
@@ -76,7 +76,7 @@ importers:
         specifier: ^13.3.0
         version: 13.4.2
     devDependencies:
-      '@atlas/server-sdk':
+      '@atlasprotocol/server-sdk':
         specifier: workspace:*
         version: link:../server-sdk
       '@types/node':

@@ -1,8 +1,8 @@
 /**
  * Supported payment rails for the MPP envelope.
  *
- * Mirrors the rails surface of `@atlas/server-sdk` but is duplicated here so
- * `@atlas/mpp` has zero coupling to the server-sdk package.
+ * Mirrors the rails surface of `@atlasprotocol/server-sdk` but is duplicated here so
+ * `@atlasprotocol/mpp` has zero coupling to the server-sdk package.
  *
  * Naming follows the canonical MPP method identifier convention
  * (lowercase, alphanumeric, ':' / '_' / '-' allowed) — see

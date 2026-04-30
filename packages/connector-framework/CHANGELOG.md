@@ -11,4 +11,12 @@ All notable changes to this package will be documented in this file. The format 
 - `SearchParams` type covering free-text query, date range, geographic radius search, pagination limit, and opaque cursor.
 - `AuthContext` discriminated union supporting OAuth2 (with optional refresh token) and API-key authentication.
 - Structured error hierarchy: `ConnectorError` base class plus `AuthExpiredError`, `RateLimitError` (carries optional `retryAfterSeconds`), and `NotFoundError`.
-- Re-export of `AtlasEvent` and `AtlasTicketType` peer types from `@atlas/server-sdk` via the connector return-type contracts.
+- Re-export of `AtlasEvent` and `AtlasTicketType` peer types from `@atlasprotocol/server-sdk` via the connector return-type contracts.
+
+### Notes
+
+Packaging linter audit (publint / arethetypeswrong) surfaced the following non-critical items that are not fixed in this release:
+
+- ESM-only package — CommonJS consumers must use dynamic `import()`. By design (`"type": "module"`).
+- `pkg.repository.url` lacks a `git+` prefix (cosmetic publint suggestion only).
+- `pkg.main` is set; `pkg.exports` is the modern equivalent. Migration to `exports` is a breaking change deferred to a future minor release.

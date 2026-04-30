@@ -4,7 +4,7 @@ import {
   AuthExpiredError,
   RateLimitError,
   type AuthContext,
-} from '@atlas/connector-framework';
+} from '@atlasprotocol/connector-framework';
 
 import { EventbriteConnector } from '../index.js';
 import type { EventbriteEvent, EventbriteTicketClass } from '../api.js';

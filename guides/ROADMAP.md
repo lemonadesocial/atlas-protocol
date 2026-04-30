@@ -23,7 +23,7 @@
 
 **Data Layer.** Event data published to IPFS for permanence and censorship resistance. Content-addressed storage from day one.
 
-**Developer Tools.** `lemonade-cli` published to Homebrew, npm, and PyPI with structured JSON output. MCP server for agent tool registries. `@atlas/client` SDK on npm.
+**Developer Tools.** `lemonade-cli` published to Homebrew, npm, and PyPI with structured JSON output. MCP server for agent tool registries. `@atlasprotocol/client` SDK on npm.
 
 **Rewards.** USDC-only cashback to organizers, platforms, and agents. No speculative tokens. Value returned to participants who grow the network.
 

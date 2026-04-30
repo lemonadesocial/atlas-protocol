@@ -6,7 +6,7 @@
  * bound to their parameters via an HMAC-SHA256 challenge id, and credential
  * payloads carry method-specific signatures (e.g. raw EVM signatures over
  * a Tempo transaction). We provide a JWS layer above the canonical
- * envelope as an @atlas/mpp extension because:
+ * envelope as an @atlasprotocol/mpp extension because:
  *
  *   1. The task brief asks for it.
  *   2. JOSE / RFC 7515 is the natural choice for cross-domain envelope

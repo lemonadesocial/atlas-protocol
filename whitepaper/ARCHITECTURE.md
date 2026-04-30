@@ -14,7 +14,7 @@ ATLAS is a seven-layer protocol stack. Each layer operates independently and com
 +------------------------------------------------------------------+
 |                        AGENT LAYER                                |
 |  Guest Agents (discover, book)    Organizer Agents (create, CRM)  |
-|  MCP Tools | @atlas/client SDK | lemonade-cli                    |
+|  MCP Tools | @atlasprotocol/client SDK | lemonade-cli                    |
 +------------------------------------------------------------------+
 |                     COMMUNICATION LAYER                           |
 |              XMTP (E2E encrypted organizer-guest messaging)       |
@@ -474,7 +474,7 @@ All tools are accessible through three interfaces:
 
 - **MCP server:** For LLM agents (Claude, ChatGPT, Gemini) running in MCP-compatible environments. Tools registered per MCP specification with Zod schemas for validation.
 - **lemonade-cli:** For terminal-based agents (Claude Code, Cursor, GitHub Copilot) and human developers. Every command accepts `--format json` for machine consumption.
-- **@atlas/client SDK:** TypeScript library for programmatic integration. Pluggable payment handlers per chain.
+- **@atlasprotocol/client SDK:** TypeScript library for programmatic integration. Pluggable payment handlers per chain.
 
 The protocol does not distinguish between a human and an agent calling the same endpoint. A `lemonade event create` command produces the same result regardless of who typed it.
 

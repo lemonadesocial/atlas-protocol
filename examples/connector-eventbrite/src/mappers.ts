@@ -1,4 +1,4 @@
-import type { AtlasEvent, AtlasTicketType } from '@atlas/server-sdk';
+import type { AtlasEvent, AtlasTicketType } from '@atlasprotocol/server-sdk';
 
 import type {
   EventbriteEvent,

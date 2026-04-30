@@ -1,19 +1,19 @@
-# @atlas/mpp
+# @atlasprotocol/mpp
 
 Standalone implementation of the **Machine Payments Protocol (MPP)** envelope — `encode` / `decode` / `serialize` / `deserialize`, plus an optional JWS signing layer for cross-domain authenticity.
 
-> The package is dependency-free against `@atlas/server-sdk`. It can be used by any HTTP-402 server or agent client.
+> The package is dependency-free against `@atlasprotocol/server-sdk`. It can be used by any HTTP-402 server or agent client.
 
 ## Quickstart
 
 ```bash
-pnpm add @atlas/mpp
+pnpm add @atlasprotocol/mpp
 ```
 
 ### Encode + decode an envelope
 
 ```ts
-import { encode, decode, serialize, deserialize } from '@atlas/mpp';
+import { encode, decode, serialize, deserialize } from '@atlasprotocol/mpp';
 
 const envelope = encode({
   rail: 'usdc-base',
@@ -38,7 +38,7 @@ const recovered = decode(deserialize(wire));
 
 ```ts
 import { generateKeyPair } from 'jose';
-import { encode, signEnvelope, verifyEnvelope } from '@atlas/mpp';
+import { encode, signEnvelope, verifyEnvelope } from '@atlasprotocol/mpp';
 
 const { privateKey, publicKey } = await generateKeyPair('ES256');
 
@@ -66,11 +66,11 @@ if (result.valid) {
 ## Supported rails
 
 ```ts
-import { SUPPORTED_RAILS } from '@atlas/mpp';
+import { SUPPORTED_RAILS } from '@atlasprotocol/mpp';
 // 'usdc-base' | 'usdc-tempo' | 'usdc-arbitrum' | 'usdc-polygon' | 'usdc-optimism' | 'stripe-spt'
 ```
 
-`@atlas/mpp` accepts any rail string that conforms to the canonical MPP method identifier grammar — `isValidMethodIdentifier(s)` — so non-supported rails still flow through `decode()`.
+`@atlasprotocol/mpp` accepts any rail string that conforms to the canonical MPP method identifier grammar — `isValidMethodIdentifier(s)` — so non-supported rails still flow through `decode()`.
 
 ## Conformance status
 
@@ -81,7 +81,7 @@ This package follows the canonical MPP wire shape published at <https://mpp.dev/
 - The canonical method identifier grammar (lowercase alpha + digits + `:_-`).
 - The reserved fields (`id`, `realm`, `method`, `intent`, `request`, `expires`, `description`, `digest`, `opaque`).
 
-The MPP spec does **not** mandate JWS for envelope authenticity (it pins challenge ids via HMAC-SHA256 and lets each method define its own credential payload signature). The JWS layer in this package is an `@atlas/mpp` extension above the canonical spec — it is the natural choice when you want a single signed blob with cross-domain verifiability.
+The MPP spec does **not** mandate JWS for envelope authenticity (it pins challenge ids via HMAC-SHA256 and lets each method define its own credential payload signature). The JWS layer in this package is an `@atlasprotocol/mpp` extension above the canonical spec — it is the natural choice when you want a single signed blob with cross-domain verifiability.
 
 For every field where the spec leaves an ambiguity (organizer identity, line items, free-form metadata, MPP version literal), the implementation flags an `MPP-GAP-XXX` and documents the resolution in [`SPEC-NOTES.md`](./SPEC-NOTES.md).
 

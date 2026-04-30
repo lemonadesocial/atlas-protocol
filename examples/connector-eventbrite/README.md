@@ -1,6 +1,6 @@
-# @atlas/connector-eventbrite-example
+# @atlasprotocol/connector-eventbrite-example
 
-Reference implementation of an ATLAS Protocol connector for [Eventbrite](https://www.eventbrite.com/platform/api). Demonstrates how to fulfill the `@atlas/connector-framework` `Connector` contract by wrapping a third-party REST API: OAuth2 PKCE authorization, paginated `search`, single-event lookup, and ticket-class enumeration, with deterministic pure-function mappers from Eventbrite shapes to ATLAS JSON-LD.
+Reference implementation of an ATLAS Protocol connector for [Eventbrite](https://www.eventbrite.com/platform/api). Demonstrates how to fulfill the `@atlasprotocol/connector-framework` `Connector` contract by wrapping a third-party REST API: OAuth2 PKCE authorization, paginated `search`, single-event lookup, and ticket-class enumeration, with deterministic pure-function mappers from Eventbrite shapes to ATLAS JSON-LD.
 
 > Marked `private: true` in `package.json` — this package is shipped as a learning resource, not a published artifact.
 
@@ -18,7 +18,7 @@ Reference implementation of an ATLAS Protocol connector for [Eventbrite](https:/
 3. Construct the connector and call it from your host:
 
    ```ts
-   import { EventbriteConnector } from '@atlas/connector-eventbrite-example';
+   import { EventbriteConnector } from '@atlasprotocol/connector-eventbrite-example';
 
    const connector = new EventbriteConnector({
      baseUrl: 'https://atlas.your-host.example.com',
@@ -50,7 +50,7 @@ Eventbrite removed the public `/events/search/` endpoint in 2019. This example s
 
 ## Errors
 
-The connector maps upstream errors onto the `@atlas/connector-framework` hierarchy:
+The connector maps upstream errors onto the `@atlasprotocol/connector-framework` hierarchy:
 
 | Upstream | Behavior |
 |----------|----------|
@@ -64,7 +64,7 @@ The connector maps upstream errors onto the `@atlas/connector-framework` hierarc
 From the monorepo root:
 
 ```bash
-pnpm --filter @atlas/connector-eventbrite-example test
+pnpm --filter @atlasprotocol/connector-eventbrite-example test
 ```
 
 Tests inject a mocked `fetch` via the connector's constructor — no network calls are made.

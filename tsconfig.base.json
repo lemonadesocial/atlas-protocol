@@ -21,11 +21,11 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@atlas/agent-tools": ["./packages/agent-tools/src/index.ts"],
-      "@atlas/server-sdk": ["./packages/server-sdk/src/index.ts"],
-      "@atlas/mpp": ["./packages/mpp/src/index.ts"],
-      "@atlas/connector-framework": ["./packages/connector-framework/src/index.ts"],
-      "@atlas/ipfs": ["./packages/ipfs/src/index.ts"]
+      "@atlasprotocol/agent-tools": ["./packages/agent-tools/src/index.ts"],
+      "@atlasprotocol/server-sdk": ["./packages/server-sdk/src/index.ts"],
+      "@atlasprotocol/mpp": ["./packages/mpp/src/index.ts"],
+      "@atlasprotocol/connector-framework": ["./packages/connector-framework/src/index.ts"],
+      "@atlasprotocol/ipfs": ["./packages/ipfs/src/index.ts"]
     }
   }
 }

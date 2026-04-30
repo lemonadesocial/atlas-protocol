@@ -37,3 +37,11 @@ and this package adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standardized on Zod v4.
 - Verification resource accepts a pluggable `loadVerificationStatus` loader,
   decoupling the package from any specific identity provider.
+
+### Notes
+
+Packaging linter audit (publint / arethetypeswrong) surfaced the following non-critical items that are not fixed in this release:
+
+- ESM-only package — CommonJS consumers must use dynamic `import()`. By design (`"type": "module"`).
+- `pkg.repository.url` lacks a `git+` prefix (cosmetic publint suggestion only).
+- `pkg.main` is set; `pkg.exports` is the modern equivalent. Migration to `exports` is a breaking change deferred to a future minor release.

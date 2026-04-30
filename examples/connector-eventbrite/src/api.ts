@@ -2,7 +2,7 @@ import {
   AuthExpiredError,
   ConnectorError,
   RateLimitError,
-} from '@atlas/connector-framework';
+} from '@atlasprotocol/connector-framework';
 
 export const EVENTBRITE_API_BASE = 'https://www.eventbriteapi.com/v3';
 

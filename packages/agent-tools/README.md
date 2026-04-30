@@ -1,4 +1,4 @@
-# @atlas/agent-tools
+# @atlasprotocol/agent-tools
 
 Agent-side ATLAS Protocol tooling. Drop these helpers into any LangChain agent
 or Model Context Protocol server and your runtime can discover events, fetch
@@ -10,7 +10,7 @@ signing back to the caller's wallet layer where it belongs.
 ## Install
 
 ```bash
-pnpm add @atlas/agent-tools
+pnpm add @atlasprotocol/agent-tools
 # Pick the runtimes you actually use:
 pnpm add @langchain/core            # for LangChain bindings
 pnpm add @modelcontextprotocol/sdk  # for MCP server bindings
@@ -23,7 +23,7 @@ dependencies** — install only the ones your agent uses.
 ## Quickstart — LangChain
 
 ```ts
-import { buildAtlasLangChainTools } from '@atlas/agent-tools';
+import { buildAtlasLangChainTools } from '@atlasprotocol/agent-tools';
 
 const atlasTools = buildAtlasLangChainTools({
   config: {
@@ -45,7 +45,7 @@ import {
   registerAtlasMcpTools,
   registerAtlasMcpResources,
   registerAtlasMcpPrompts,
-} from '@atlas/agent-tools';
+} from '@atlasprotocol/agent-tools';
 
 const server = new McpServer({ name: 'atlas', version: '0.1.0' });
 const config = { registryUrl: '…', backendUrl: '…', agentId: 'agent:my-app' };

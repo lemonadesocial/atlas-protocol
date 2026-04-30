@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-The ATLAS agent layer is two-sided. Guest agents discover and book events. Organizer agents create events, manage guest relationships, and run promotions. Both sides share the same infrastructure: MCP tools, the lemonade-cli, and the `@atlas/client` SDK.
+The ATLAS agent layer is two-sided. Guest agents discover and book events. Organizer agents create events, manage guest relationships, and run promotions. Both sides share the same infrastructure: MCP tools, the lemonade-cli, and the `@atlasprotocol/client` SDK.
 
 The protocol does not distinguish between a human and an agent calling the same endpoint. A `lemonade event create` command produces the same result whether typed by an organizer or invoked by an AI assistant. Agent identity is tracked separately via the `X-Atlas-Agent-Id` header for referral attribution and reputation.
 
@@ -16,7 +16,7 @@ Three interface layers expose all agent capabilities:
 
 1. **MCP server** for LLM agents (Claude, ChatGPT, Gemini) in MCP-compatible environments. Tools are registered per MCP specification with Zod schemas for input validation.
 2. **lemonade-cli** for terminal-based agents (Claude Code, Cursor, GitHub Copilot) and human developers. Every command accepts `--format json`.
-3. **@atlas/client SDK** (TypeScript) for programmatic integration with pluggable payment handlers per chain.
+3. **@atlasprotocol/client SDK** (TypeScript) for programmatic integration with pluggable payment handlers per chain.
 
 ---
 
@@ -233,14 +233,14 @@ lemonade page deploy --event evt_xyz789
 
 ---
 
-## 5. @atlas/client SDK
+## 5. @atlasprotocol/client SDK
 
 TypeScript library for programmatic agent integration. Designed for agent developers who need typed methods and pluggable payment handling.
 
 ### 5.1 Core Interface
 
 ```typescript
-import { ATLAS } from '@atlas/client'
+import { ATLAS } from '@atlasprotocol/client'
 
 const atlas = new ATLAS()
 
@@ -303,14 +303,14 @@ The SDK selects a handler based on the chain specified in the hold's payment cha
 
 ---
 
-## 6. @atlas/server-sdk
+## 6. @atlasprotocol/server-sdk
 
-Server-side middleware for existing platforms integrating ATLAS. The `@atlas/server-sdk` wraps event listing, purchase flow, and settlement into a single middleware function.
+Server-side middleware for existing platforms integrating ATLAS. The `@atlasprotocol/server-sdk` wraps event listing, purchase flow, and settlement into a single middleware function.
 
 ### 6.1 Core Middleware
 
 ```typescript
-import { atlasMiddleware } from '@atlas/server-sdk'
+import { atlasMiddleware } from '@atlasprotocol/server-sdk'
 
 app.use('/atlas', atlasMiddleware({
   eventsSource: async () => fetchEventsFromDB(),
@@ -330,9 +330,9 @@ The middleware automatically:
 The middleware is framework-agnostic. Adapters ship for Express, Fastify, and Koa.
 
 ```typescript
-import { atlasExpress } from '@atlas/server-sdk/express'
-import { atlasFastify } from '@atlas/server-sdk/fastify'
-import { atlasKoa } from '@atlas/server-sdk/koa'
+import { atlasExpress } from '@atlasprotocol/server-sdk/express'
+import { atlasFastify } from '@atlasprotocol/server-sdk/fastify'
+import { atlasKoa } from '@atlasprotocol/server-sdk/koa'
 ```
 
 Each adapter wraps the core middleware to match the framework's request/response conventions. A platform engineer can add ATLAS compliance to an existing server in under a day.

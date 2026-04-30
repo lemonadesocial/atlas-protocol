@@ -3,7 +3,7 @@
  *
  * The canonical MPP wire structure carries a method-specific request object
  * inside the challenge envelope (https://mpp.dev/protocol/challenges,
- * accessed 2026-04-30). For the @atlas/mpp surface we expose:
+ * accessed 2026-04-30). For the @atlasprotocol/mpp surface we expose:
  *
  *   - `MppPayload` — the developer-facing payload that an organizer uses
  *     to describe what they are charging for. `encode()` lifts this into

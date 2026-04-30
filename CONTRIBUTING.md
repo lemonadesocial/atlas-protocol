@@ -46,7 +46,7 @@ forge test
 ## Adding a new TypeScript package
 
 1. Create the directory under `packages/<name>/`.
-2. Add a `package.json` with `"name": "@atlas/<name>"` and standard `build`/`test`/`lint`/`typecheck` scripts.
+2. Add a `package.json` with `"name": "@atlasprotocol/<name>"` and standard `build`/`test`/`lint`/`typecheck` scripts.
 3. Add a `tsconfig.json` that extends the root config:
    ```json
    { "extends": "../../tsconfig.base.json" }

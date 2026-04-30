@@ -3,8 +3,8 @@ import { generateCid } from './cid.js';
 
 /**
  * Minimal ATLAS purchase receipt shape used for CID generation. The full receipt
- * type will be standardized in a future release of @atlas/server-sdk; this is an
- * interim definition local to @atlas/ipfs.
+ * type will be standardized in a future release of @atlasprotocol/server-sdk; this is an
+ * interim definition local to @atlasprotocol/ipfs.
  */
 export interface AtlasReceipt {
   purchase_id: string;

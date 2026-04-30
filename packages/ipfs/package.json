@@ -1,5 +1,5 @@
 {
-  "name": "@atlas/ipfs",
+  "name": "@atlasprotocol/ipfs",
   "version": "0.1.0",
   "description": "Deterministic CID generation and pinning service abstractions for the ATLAS Protocol.",
   "license": "MIT",
@@ -34,10 +34,10 @@
     "multiformats": "^13.3.0"
   },
   "peerDependencies": {
-    "@atlas/server-sdk": "workspace:*"
+    "@atlasprotocol/server-sdk": "workspace:*"
   },
   "devDependencies": {
-    "@atlas/server-sdk": "workspace:*",
+    "@atlasprotocol/server-sdk": "workspace:*",
     "@types/node": "^22.0.0",
     "typescript": "^5.6.3",
     "vitest": "^2.0.0"

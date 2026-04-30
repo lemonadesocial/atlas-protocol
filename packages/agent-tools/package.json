@@ -1,11 +1,11 @@
 {
-  "name": "@atlas/agent-tools",
+  "name": "@atlasprotocol/agent-tools",
   "version": "0.1.0",
   "description": "Agent-side ATLAS Protocol tooling for LangChain and MCP. Speak ATLAS from any agent runtime.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/<owner>/atlas-protocol.git",
+    "url": "https://github.com/lemonadesocial/atlas-protocol.git",
     "directory": "packages/agent-tools"
   },
   "keywords": [

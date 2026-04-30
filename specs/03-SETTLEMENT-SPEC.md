@@ -110,7 +110,7 @@ lemonade admin chain register \
   --explorer https://explorer.megaeth.com
 ```
 
-**Step 4: Update CLI/SDK.** Add the chain name to the `--chain` option in `lemonade-cli` and the `@atlas/client` SDK. The listing schema already supports arbitrary chain identifiers in the `atlas:settlement.chains` array, so no schema migration is needed.
+**Step 4: Update CLI/SDK.** Add the chain name to the `--chain` option in `lemonade-cli` and the `@atlasprotocol/client` SDK. The listing schema already supports arbitrary chain identifiers in the `atlas:settlement.chains` array, so no schema migration is needed.
 
 ---
 

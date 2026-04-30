@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AtlasEvent } from '@atlas/server-sdk';
+import type { AtlasEvent } from '@atlasprotocol/server-sdk';
 
 import { generateEventCid } from '../event-cid.js';
 

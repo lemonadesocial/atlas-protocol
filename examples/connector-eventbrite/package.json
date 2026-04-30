@@ -1,5 +1,5 @@
 {
-  "name": "@atlas/connector-eventbrite-example",
+  "name": "@atlasprotocol/connector-eventbrite-example",
   "version": "0.1.0",
   "private": true,
   "description": "Reference Eventbrite connector for the ATLAS Protocol. Demonstrates OAuth2 PKCE, REST pagination, and source-platform → ATLAS schema mapping.",
@@ -20,8 +20,8 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@atlas/connector-framework": "workspace:*",
-    "@atlas/server-sdk": "workspace:*"
+    "@atlasprotocol/connector-framework": "workspace:*",
+    "@atlasprotocol/server-sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

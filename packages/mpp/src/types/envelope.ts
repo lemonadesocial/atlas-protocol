@@ -88,7 +88,7 @@ export interface MppEnvelope {
  *   - the compact JWS string (default; matches RFC 7515 compact serialization)
  *   - and the original envelope for ergonomic access without re-decoding.
  *
- * The JWS layer is an @atlas/mpp extension above the canonical spec —
+ * The JWS layer is an @atlasprotocol/mpp extension above the canonical spec —
  * see SPEC-NOTES.md §Signing for the rationale.
  */
 export interface SignedMppEnvelope {

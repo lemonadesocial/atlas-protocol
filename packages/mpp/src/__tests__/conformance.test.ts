@@ -1,5 +1,5 @@
 /**
- * Conformance tests for @atlas/mpp.
+ * Conformance tests for @atlasprotocol/mpp.
  *
  * The canonical Machine Payments Protocol spec at https://mpp.dev does not
  * publish public test vectors as of 2026-04-30. The reference TypeScript

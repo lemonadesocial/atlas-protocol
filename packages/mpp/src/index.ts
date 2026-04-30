@@ -1,5 +1,5 @@
 /**
- * @atlas/mpp — standalone implementation of the Machine Payments Protocol
+ * @atlasprotocol/mpp — standalone implementation of the Machine Payments Protocol
  * envelope (https://mpp.dev), with an optional JWS signing layer.
  */
 

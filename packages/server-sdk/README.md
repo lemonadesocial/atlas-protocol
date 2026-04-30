@@ -1,11 +1,11 @@
-# @atlas/server-sdk
+# @atlasprotocol/server-sdk
 
 Host a compliant ATLAS Protocol endpoint from any Node HTTP framework. The SDK ships the three primitives every ATLAS server needs — `.well-known/atlas.json` manifest generation, source-platform → ATLAS schema mapping, and multi-chain payment verification — with no Koa/Express/Fastify lock-in and no implicit database access. Drop it into your existing API to expose your event catalog to ATLAS-aware agents and clients.
 
 ## Install
 
 ```bash
-pnpm add @atlas/server-sdk
+pnpm add @atlasprotocol/server-sdk
 ```
 
 ## Quickstart
@@ -16,7 +16,7 @@ import {
   toAtlasEvent,
   verifyPayment,
   type ServerSdkConfig,
-} from '@atlas/server-sdk';
+} from '@atlasprotocol/server-sdk';
 
 const config: ServerSdkConfig = {
   platform: { name: 'Lemonade', url: 'https://lemonade.social' },

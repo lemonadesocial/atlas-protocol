@@ -6,7 +6,7 @@ All notable changes to this package will be documented in this file. The format 
 
 ### Added
 
-- `EventbriteConnector` class implementing the `@atlas/connector-framework` `Connector` interface (`search`, `getEvent`, `listTicketTypes`).
+- `EventbriteConnector` class implementing the `@atlasprotocol/connector-framework` `Connector` interface (`search`, `getEvent`, `listTicketTypes`).
 - `EventbriteApiClient` thin REST wrapper over `https://www.eventbriteapi.com/v3/` with injectable `fetch` for testability.
 - Pure mappers `eventbriteEventToAtlas` and `eventbriteTicketClassToAtlas` covering name, description, start/end, venue + geo, organizer, status, online vs in-person attendance mode, currency, pricing breakdown (base + fees + tax), availability with sold-out / few-remaining / hidden detection, and metadata pass-through.
 - OAuth2 PKCE helpers (`generatePkcePair`, `buildAuthorizeUrl`, `exchangeCodeForToken`, `refreshAccessToken`) implementing RFC 7636.

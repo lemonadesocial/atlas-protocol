@@ -1,11 +1,11 @@
-import type { AtlasEvent, AtlasTicketType } from '@atlas/server-sdk';
+import type { AtlasEvent, AtlasTicketType } from '@atlasprotocol/server-sdk';
 import {
   AuthExpiredError,
   type AuthContext,
   type Connector,
   type ConnectorCapabilities,
   type SearchParams,
-} from '@atlas/connector-framework';
+} from '@atlasprotocol/connector-framework';
 
 import { EventbriteApiClient, type EventbriteApiClientOptions } from './api.js';
 import {
