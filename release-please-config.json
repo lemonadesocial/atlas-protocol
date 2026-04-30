@@ -7,11 +7,26 @@
   "include-v-in-tag": true,
   "separate-pull-requests": false,
   "packages": {
-    "packages/agent-tools": { "package-name": "@atlasprotocol/agent-tools" },
-    "packages/server-sdk": { "package-name": "@atlasprotocol/server-sdk" },
-    "packages/mpp": { "package-name": "@atlasprotocol/mpp" },
-    "packages/ipfs": { "package-name": "@atlasprotocol/ipfs" },
-    "packages/connector-framework": { "package-name": "@atlasprotocol/connector-framework" }
+    "packages/agent-tools": {
+      "package-name": "@atlasprotocol/agent-tools",
+      "release-as": "0.1.0"
+    },
+    "packages/server-sdk": {
+      "package-name": "@atlasprotocol/server-sdk",
+      "release-as": "0.1.0"
+    },
+    "packages/mpp": {
+      "package-name": "@atlasprotocol/mpp",
+      "release-as": "0.1.0"
+    },
+    "packages/ipfs": {
+      "package-name": "@atlasprotocol/ipfs",
+      "release-as": "0.1.0"
+    },
+    "packages/connector-framework": {
+      "package-name": "@atlasprotocol/connector-framework",
+      "release-as": "0.1.0"
+    }
   },
   "plugins": [
     { "type": "node-workspace", "updatePeerDependencies": true }
