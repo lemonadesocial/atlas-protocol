@@ -1,0 +1,42 @@
+{
+  "name": "@atlas/connector-framework",
+  "version": "0.1.0",
+  "description": "Connector framework for ATLAS Protocol. Defines the Connector interface, capability descriptors, auth contexts, search params, and structured error types used by source-platform adapters.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lemonadesocial/atlas-protocol.git",
+    "directory": "packages/connector-framework"
+  },
+  "keywords": [
+    "atlas",
+    "atlas-protocol",
+    "connector",
+    "adapter",
+    "events"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "echo \"no lint configured\" && exit 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "peerDependencies": {
+    "@atlas/server-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@atlas/server-sdk": "workspace:*",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.0.0"
+  }
+}
