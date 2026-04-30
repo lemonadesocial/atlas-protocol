@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0 (2026-04-30)
+
+
+### Features
+
+* **server-sdk:** extract @atlas/server-sdk from lemonade-backend reference implementation ([a8d06e0](https://github.com/lemonadesocial/atlas-protocol/commit/a8d06e086d9b780c12ae9080ecb08f22efa322de))
+
 ## 0.1.0
 
 Initial release.

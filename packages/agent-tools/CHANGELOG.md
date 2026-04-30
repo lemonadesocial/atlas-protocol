@@ -5,6 +5,13 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this package adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.1.0 (2026-04-30)
+
+
+### Features
+
+* **agent-tools:** extract @atlas/agent-tools from lemonade-ai reference implementation ([8d01d99](https://github.com/lemonadesocial/atlas-protocol/commit/8d01d99c7c0332822999fd6f5ac1b9b63312b618))
+
 ## [0.1.0] — Unreleased
 
 ### Added
