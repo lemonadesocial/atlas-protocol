@@ -155,6 +155,7 @@ export function registerAtlasMcpTools(server: McpServer, config: AtlasToolsConfi
         throw new Error("Authentication required to purchase tickets");
       }
 
+      // Authorization is mixed into the idempotency key so two different users requesting the same event/ticket/quantity get distinct keys.
       const idempotencyKey = createHash("sha256")
         .update(
           `atlas:${input.event_id}:${input.ticket_type_id}:${input.quantity}:${authorization}`,
