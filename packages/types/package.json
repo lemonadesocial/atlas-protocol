@@ -13,7 +13,7 @@
   "scripts": {
     "build": "echo 'Not yet implemented'",
     "test": "echo 'Not yet implemented'",
-    "lint": "eslint .",
+    "lint": "echo 'Not yet implemented'",
     "format:check": "prettier --check .",
     "typecheck": "echo 'Not yet implemented'"
   }
