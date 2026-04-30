@@ -1,0 +1,223 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.27;
+
+import {Test} from "forge-std/Test.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+
+import {FeeRouter} from "../src/FeeRouter.sol";
+import {IFeeRouter} from "../src/interfaces/IFeeRouter.sol";
+import {MockUSDC} from "./utils/MockUSDC.sol";
+
+/// @dev Helper used by the upgrade authorization test.
+contract FeeRouterV2 is FeeRouter {
+    function version() external pure returns (string memory) {
+        return "v2";
+    }
+}
+
+contract FeeRouterTest is Test {
+    FeeRouter internal router;
+    MockUSDC internal usdc;
+
+    address internal admin = address(0xA11CE);
+    address internal upgrader = address(0xB0B);
+    address internal pauser = address(0xCAFE);
+    address internal treasury = address(0xBEEF);
+    address internal organizer = address(0xD00D);
+    address internal payer = address(0xF00D);
+    address internal stranger = address(0xDEAD);
+
+    bytes32 internal constant PAYMENT_ID_1 = keccak256("payment-1");
+    bytes32 internal constant PAYMENT_ID_2 = keccak256("payment-2");
+
+    event PaymentSettled(
+        bytes32 indexed paymentId, address indexed organizer, uint256 organizerAmount, uint256 protocolFee
+    );
+    event FeeScheduleUpdated(uint16 oldBps, uint16 newBps);
+
+    function setUp() public {
+        usdc = new MockUSDC();
+
+        FeeRouter impl = new FeeRouter();
+        bytes memory initData = abi.encodeCall(
+            FeeRouter.initialize, (admin, upgrader, pauser, treasury, address(usdc))
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        router = FeeRouter(address(proxy));
+
+        usdc.mint(payer, 1_000_000e6);
+        vm.prank(payer);
+        usdc.approve(address(router), type(uint256).max);
+    }
+
+    // ---------------------------------------------------------------------
+    // settle
+    // ---------------------------------------------------------------------
+
+    function test_settle_correctSplit_2pct() public {
+        uint256 amount = 1_000e6;
+        uint256 expectedFee = 20e6; // 2% of 1000
+        uint256 expectedOrganizer = 980e6;
+
+        vm.expectEmit(true, true, false, true, address(router));
+        emit PaymentSettled(PAYMENT_ID_1, organizer, expectedOrganizer, expectedFee);
+
+        vm.prank(payer);
+        router.settle(organizer, amount, PAYMENT_ID_1);
+
+        assertEq(usdc.balanceOf(organizer), expectedOrganizer, "organizer balance");
+        assertEq(usdc.balanceOf(treasury), expectedFee, "treasury balance");
+        assertEq(usdc.balanceOf(address(router)), 0, "router holds nothing");
+        assertTrue(router.isSettled(PAYMENT_ID_1), "marked settled");
+    }
+
+    function test_settle_zeroAmount_reverts() public {
+        vm.prank(payer);
+        vm.expectRevert(IFeeRouter.ZeroAmount.selector);
+        router.settle(organizer, 0, PAYMENT_ID_1);
+    }
+
+    function test_settle_zeroOrganizer_reverts() public {
+        vm.prank(payer);
+        vm.expectRevert(IFeeRouter.ZeroAddress.selector);
+        router.settle(address(0), 100e6, PAYMENT_ID_1);
+    }
+
+    function test_settle_duplicatePaymentId_reverts() public {
+        vm.prank(payer);
+        router.settle(organizer, 100e6, PAYMENT_ID_1);
+
+        vm.prank(payer);
+        vm.expectRevert(abi.encodeWithSelector(IFeeRouter.PaymentAlreadySettled.selector, PAYMENT_ID_1));
+        router.settle(organizer, 200e6, PAYMENT_ID_1);
+    }
+
+    function test_settle_paused_reverts() public {
+        vm.prank(pauser);
+        router.pause();
+
+        vm.prank(payer);
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        router.settle(organizer, 100e6, PAYMENT_ID_1);
+
+        vm.prank(pauser);
+        router.unpause();
+
+        vm.prank(payer);
+        router.settle(organizer, 100e6, PAYMENT_ID_1);
+        assertTrue(router.isSettled(PAYMENT_ID_1));
+    }
+
+    /// @dev Demonstrates the contract only ever pulls usdcToken: a payer with no USDC / no
+    ///      allowance cannot settle, satisfying the "USDC-only" requirement.
+    function test_settle_unauthorizedToken_reverts() public {
+        address brokePayer = address(0xBA5E);
+        // No mint, no approve — settle must revert on transferFrom.
+        vm.prank(brokePayer);
+        vm.expectRevert();
+        router.settle(organizer, 100e6, PAYMENT_ID_1);
+    }
+
+    // ---------------------------------------------------------------------
+    // setFeeBps / setTreasury
+    // ---------------------------------------------------------------------
+
+    function test_setFeeSchedule_admin() public {
+        vm.expectEmit(false, false, false, true, address(router));
+        emit FeeScheduleUpdated(200, 350);
+
+        vm.prank(admin);
+        router.setFeeBps(350);
+        assertEq(router.feeBps(), 350);
+    }
+
+    function test_setFeeSchedule_unauthorized_reverts() public {
+        bytes32 adminRole = router.DEFAULT_ADMIN_ROLE();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, stranger, adminRole
+            )
+        );
+        vm.prank(stranger);
+        router.setFeeBps(350);
+    }
+
+    function test_setFeeSchedule_above_cap_reverts() public {
+        uint16 maxBps = router.MAX_FEE_BPS();
+        vm.expectRevert(
+            abi.encodeWithSelector(IFeeRouter.FeeBpsTooHigh.selector, uint16(1001), maxBps)
+        );
+        vm.prank(admin);
+        router.setFeeBps(1001);
+    }
+
+    function test_setTreasury_admin() public {
+        address newTreasury = address(0xCAFEBABE);
+        vm.prank(admin);
+        router.setTreasury(newTreasury);
+        assertEq(router.treasury(), newTreasury);
+    }
+
+    function test_setTreasury_zero_reverts() public {
+        vm.prank(admin);
+        vm.expectRevert(IFeeRouter.ZeroAddress.selector);
+        router.setTreasury(address(0));
+    }
+
+    // ---------------------------------------------------------------------
+    // Upgrade
+    // ---------------------------------------------------------------------
+
+    function test_upgrade_uupsAuth() public {
+        FeeRouterV2 v2 = new FeeRouterV2();
+
+        vm.prank(upgrader);
+        router.upgradeToAndCall(address(v2), bytes(""));
+
+        // Storage preserved + new method available.
+        assertEq(router.feeBps(), 200);
+        assertEq(FeeRouterV2(address(router)).version(), "v2");
+    }
+
+    function test_upgrade_unauthorized_reverts() public {
+        FeeRouterV2 v2 = new FeeRouterV2();
+        bytes32 upgraderRole = router.UPGRADER_ROLE();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, stranger, upgraderRole
+            )
+        );
+        vm.prank(stranger);
+        router.upgradeToAndCall(address(v2), bytes(""));
+    }
+
+    // ---------------------------------------------------------------------
+    // Fuzz
+    // ---------------------------------------------------------------------
+
+    function test_fuzz_settle_anyAmount(uint128 amountSeed) public {
+        uint256 amount = bound(uint256(amountSeed), 1, type(uint128).max);
+
+        // Refresh payer balance + allowance for arbitrary amounts.
+        usdc.mint(payer, amount);
+        vm.prank(payer);
+        usdc.approve(address(router), type(uint256).max);
+
+        uint256 organizerBalBefore = usdc.balanceOf(organizer);
+        uint256 treasuryBalBefore = usdc.balanceOf(treasury);
+
+        bytes32 paymentId = keccak256(abi.encode(amount));
+        vm.prank(payer);
+        router.settle(organizer, amount, paymentId);
+
+        uint256 protocolFee = (amount * 200) / 10_000;
+        uint256 organizerAmount = amount - protocolFee;
+
+        assertEq(usdc.balanceOf(organizer) - organizerBalBefore, organizerAmount, "organizer share");
+        assertEq(usdc.balanceOf(treasury) - treasuryBalBefore, protocolFee, "treasury share");
+        assertEq(organizerAmount + protocolFee, amount, "split sums to input");
+    }
+}

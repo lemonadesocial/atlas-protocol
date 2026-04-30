@@ -1,0 +1,11 @@
+# Foundry build artifacts
+forge-out/
+out/
+cache/
+forge-cache/
+
+# Foundry deployment artifacts
+broadcast/
+
+# Foundry lock file (per-machine; do not commit)
+foundry.lock
