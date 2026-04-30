@@ -5,6 +5,13 @@ All notable changes to `@atlasprotocol/ipfs` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2](https://github.com/lemonadesocial/atlas-protocol/compare/ipfs-v0.1.1...ipfs-v0.1.2) (2026-04-30)
+
+
+### Bug Fixes
+
+* **ipfs:** document canonicalization step in generateEventCid jsdoc ([#16](https://github.com/lemonadesocial/atlas-protocol/issues/16)) ([cb8a90a](https://github.com/lemonadesocial/atlas-protocol/commit/cb8a90afa5872c5cc8cefbf091019fda6a41c41e))
+
 ## [0.1.1](https://github.com/lemonadesocial/atlas-protocol/compare/ipfs-v0.1.0...ipfs-v0.1.1) (2026-04-30)
 
 
