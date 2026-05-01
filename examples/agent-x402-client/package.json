@@ -1,0 +1,30 @@
+{
+  "name": "@atlasprotocol/example-agent-x402-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reference example: agent paying an HTTP 402 challenge with @atlasprotocol/mpp/x402 against a Base Sepolia USDC endpoint.",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@atlasprotocol/mpp": "workspace:*",
+    "viem": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.6.3"
+  }
+}
