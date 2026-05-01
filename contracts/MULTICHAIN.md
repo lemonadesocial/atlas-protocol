@@ -42,20 +42,28 @@ The contract doesn't care. Operators pick the stablecoin that fits their use cas
 
 > **Verify before deploying.** ERC-20 contract addresses change occasionally (chain redeploys, native USDC migrations, etc.). Always verify against canonical sources (e.g., Circle's official USDC address page, the chain's official docs) before passing an address to `STABLECOIN` env var.
 
+## Per-chain runbooks
+
+Authoritative per-chain deploy instructions live in [`deploy/`](./deploy/):
+
+| Chain | Status | Runbook |
+|-------|--------|---------|
+| Base mainnet | Production | [`deploy/base.md`](./deploy/base.md) |
+| Optimism | Production | [`deploy/optimism.md`](./deploy/optimism.md) |
+| Arbitrum One | Production | [`deploy/arbitrum.md`](./deploy/arbitrum.md) |
+| World Chain | Production | [`deploy/worldchain.md`](./deploy/worldchain.md) |
+| MegaETH | Experimental (USDM, no canonical Circle USDC yet) | [`deploy/megaeth.md`](./deploy/megaeth.md) |
+| Tempo | Placeholder (pending public mainnet) | [`deploy/tempo.md`](./deploy/tempo.md) |
+
+Each runbook documents the canonical stablecoin contract for that chain, the required env vars, the `forge script` invocation, the post-deploy verification command, and the CREATE2 address derivation. USDC contract addresses are verified against [Circle's official "USDC contract addresses" page](https://developers.circle.com/stablecoins/usdc-contract-addresses).
+
+> **CREATE2 caveat.** The proxy address is **NOT** byte-identical across chains by default — `initData` embeds chain-specific `(admin, upgrader, pauser, treasury, stablecoin)` values, and `impl` is created with plain `CREATE` (so its address depends on the deployer's nonce on that chain). To get a matching address everywhere, pin the same multisig addresses on every chain AND bridge the deployer to the same nonce; otherwise treat the proxy as per-chain output and record it in the runbook's "Deployed addresses" section. See [`deploy/README.md`](./deploy/README.md) §"CREATE2 address derivation" for the full formula.
+
 ## Per-chain expansion checklist (EVM)
 
 When adding a new EVM chain N to the protocol:
 
-1. **Deploy FeeRouter** via Foundry script with chain-specific env vars:
-   ```
-   STABLECOIN=0x...   # ERC-20 stablecoin on chain N
-   TREASURY=0x...     # protocol fee recipient
-   ADMIN=0x...        # governance multisig
-   UPGRADER=0x...     # UPGRADER_ROLE recipient
-   PAUSER=0x...       # PAUSER_ROLE recipient
-   forge script script/Deploy.s.sol --rpc-url <chain-N-rpc> --private-key $DEPLOYER --broadcast --verify
-   ```
-   CREATE2 ensures the proxy address matches Base, Optimism, etc. — same address everywhere.
+1. **Deploy FeeRouter** via Foundry script — follow the runbook for chain N in [`deploy/<chain>.md`](./deploy/), or copy [`deploy/base.md`](./deploy/base.md) as a template if no runbook exists yet.
 
 2. **Audit addendum.** Trail of Bits or OpenZeppelin: a small redeploy verification (~$10-30K), not a full re-audit. Skip if chain has identical EVM semantics to a previously-audited deployment AND nothing in the contract changed.
 
