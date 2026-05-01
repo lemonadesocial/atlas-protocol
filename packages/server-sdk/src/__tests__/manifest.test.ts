@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { createWellKnownHandler, generateManifest, generateSpaceManifest } from "../manifest.js";
+import {
+  createWellKnownHandler,
+  defaultSupportedChainIdentifiers,
+  generateAtlasManifest,
+  generateManifest,
+  generateSpaceManifest,
+} from "../manifest.js";
 import type { ServerSdkConfig } from "../config.js";
 
 function makeConfig(overrides: Partial<ServerSdkConfig> = {}): ServerSdkConfig {
@@ -122,6 +128,108 @@ describe("generateSpaceManifest", () => {
     );
     // Other endpoints stay global
     expect(manifest.endpoints.events).toBe("https://atlas.lemonade.social/atlas/v1/events");
+  });
+});
+
+describe("generateAtlasManifest (spec-aligned)", () => {
+  it("produces the canonical spec-01 / spec-02 shape", () => {
+    const manifest = generateAtlasManifest({
+      name: "Brooklyn Jazz Collective",
+      url: "https://bjc.events",
+      did: "did:web:bjc.events",
+      eventsUrl: "https://bjc.events/atlas/v1/events",
+      searchUrl: "https://bjc.events/atlas/v1/search",
+      purchaseUrl: "https://bjc.events/atlas/v1/events",
+      supportedChains: ["base-usdc", "optimism-usdc"],
+      acceptStripe: false,
+    });
+
+    expect(manifest.atlas).toBe("1.0");
+    expect(manifest.name).toBe("Brooklyn Jazz Collective");
+    expect(manifest.did).toBe("did:web:bjc.events");
+    expect(manifest.endpoints.events_url).toBe("https://bjc.events/atlas/v1/events");
+    expect(manifest.endpoints.search_url).toBe("https://bjc.events/atlas/v1/search");
+    expect(manifest.endpoints.purchase_url).toBe(
+      "https://bjc.events/atlas/v1/events/{event_id}/purchase",
+    );
+    expect(manifest.settlement.chains).toEqual(["base-usdc", "optimism-usdc"]);
+    expect(manifest.settlement.token).toBe("USDC");
+    expect(manifest.fee_model).toBe("inclusive");
+    expect(manifest.capabilities).toContain("listing");
+    expect(manifest.capabilities).toContain("purchase");
+    expect(manifest.capabilities).toContain("settlement");
+  });
+
+  it("appends stripe_spt to capabilities when acceptStripe is true", () => {
+    const manifest = generateAtlasManifest({
+      name: "X",
+      url: "https://x",
+      eventsUrl: "https://x/events",
+      purchaseUrl: "https://x/events",
+      supportedChains: ["base-usdc"],
+      acceptStripe: true,
+    });
+    expect(manifest.capabilities).toContain("stripe_spt");
+  });
+
+  it("preserves a templated purchase_url verbatim", () => {
+    const manifest = generateAtlasManifest({
+      name: "X",
+      url: "https://x",
+      eventsUrl: "https://x/events",
+      purchaseUrl: "https://x/atlas/v1/events/{event_id}/purchase",
+      supportedChains: ["base-usdc"],
+      acceptStripe: false,
+    });
+    expect(manifest.endpoints.purchase_url).toBe("https://x/atlas/v1/events/{event_id}/purchase");
+  });
+
+  it("rejects an empty rail set", () => {
+    expect(() =>
+      generateAtlasManifest({
+        name: "X",
+        url: "https://x",
+        eventsUrl: "https://x/events",
+        purchaseUrl: "https://x/events",
+        supportedChains: [],
+        acceptStripe: false,
+      }),
+    ).toThrow(/at least one rail/);
+  });
+
+  it("emits the configured signing keys verbatim", () => {
+    const key = {
+      kid: "k-1",
+      kty: "EC",
+      crv: "P-256",
+      x: "AAA",
+      y: "BBB",
+      alg: "ES256",
+      use: "sig",
+    };
+    const manifest = generateAtlasManifest({
+      name: "X",
+      url: "https://x",
+      eventsUrl: "https://x/events",
+      purchaseUrl: "https://x/events",
+      supportedChains: ["base-usdc"],
+      acceptStripe: false,
+      signingKeys: [key],
+    });
+    expect(manifest.signing_keys).toEqual([key]);
+  });
+});
+
+describe("defaultSupportedChainIdentifiers", () => {
+  it("returns kebab-cased canonical chain identifiers (spec-01 form)", () => {
+    const ids = defaultSupportedChainIdentifiers();
+    expect(ids).toContain("base-usdc");
+    expect(ids).toContain("optimism-usdc");
+    expect(ids).toContain("arbitrum-usdc");
+    expect(ids).toContain("worldchain-usdc");
+    // Experimental chains excluded by default.
+    expect(ids).not.toContain("tempo-usdc");
+    expect(ids).not.toContain("megaeth-usdm");
   });
 });
 

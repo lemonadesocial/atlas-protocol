@@ -26,10 +26,13 @@ export interface AtlasPaymentMethod {
 export type AtlasPaymentMethodType =
   | "tempo_usdc"
   | "base_usdc"
+  | "base_sepolia_usdc"
   | "arbitrum_usdc"
   | "polygon_usdc"
   | "optimism_usdc"
   | "zksync_usdc"
+  | "worldchain_usdc"
+  | "megaeth_usdm"
   | "solana_usdc"
   | "stripe_spt";
 
