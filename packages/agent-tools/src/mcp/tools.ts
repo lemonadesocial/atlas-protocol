@@ -12,24 +12,32 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
-import type { AtlasToolsConfig } from "../config.js";
+import type { AtlasMcpToolsConfig, AtlasToolsConfig } from "../config.js";
 import { resolveConfig } from "../config.js";
+import { routeDualProtocol402 } from "../dual-protocol-router.js";
 import { createAtlasHttpClient } from "../http-client.js";
 import type {
   AtlasChallengeResponse,
   AtlasCheckoutResponse,
   AtlasEventDetail,
-  AtlasPurchaseResponse,
   AtlasReceiptResponse,
   AtlasSearchResult,
 } from "../types/atlas.js";
 
 /**
  * Register the four ATLAS tools on the supplied {@link McpServer}.
+ *
+ * Accepts either {@link AtlasToolsConfig} (legacy callers) or the richer
+ * {@link AtlasMcpToolsConfig} that carries dual-protocol routing for the
+ * `atlas_purchase` tool. Both shapes are structurally compatible.
  */
-export function registerAtlasMcpTools(server: McpServer, config: AtlasToolsConfig): void {
+export function registerAtlasMcpTools(
+  server: McpServer,
+  config: AtlasToolsConfig | AtlasMcpToolsConfig,
+): void {
   const resolved = resolveConfig(config);
   const http = createAtlasHttpClient(config);
+  const routing = (config as AtlasMcpToolsConfig).routing;
 
   server.registerTool(
     "atlas_search",
@@ -162,74 +170,148 @@ export function registerAtlasMcpTools(server: McpServer, config: AtlasToolsConfi
         )
         .digest("hex");
 
-      const response = await http.request<AtlasPurchaseResponse>({
+      const purchaseUrl = `${resolved.backendUrl.replace(/\/$/, "")}/atlas/v1/events/${input.event_id}/purchase`;
+      const purchaseInit: RequestInit = {
         method: "POST",
-        path: `/atlas/v1/events/${input.event_id}/purchase`,
-        target: "backend",
         headers: {
+          "Content-Type": "application/json",
           Authorization: authorization,
           "Idempotency-Key": idempotencyKey,
+          "Atlas-Version": resolved.apiVersion,
+          "Atlas-Agent-Id": resolved.agentId,
         },
-        body: {
+        body: JSON.stringify({
           ticket_type_id: input.ticket_type_id,
           quantity: input.quantity,
-        },
-      });
+        }),
+      };
 
-      if (
-        response.status === 200 &&
-        (response.data as { type?: string }).type === "free_ticket_redirect"
-      ) {
+      // Step 1 — issue the purchase request directly (not via http.request)
+      // so we can hand the live 402 Response object to the dual-protocol
+      // router for in-tool settlement when routing is configured.
+      const initialResponse = await fetch(purchaseUrl, purchaseInit);
+
+      if (initialResponse.status === 200) {
+        const data = (await initialResponse.json()) as { type?: string; redirect_url?: string };
+        if (data.type === "free_ticket_redirect" && data.redirect_url) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  status: "completed",
+                  redirect_url: data.redirect_url,
+                  message: "Tickets acquired successfully (free event)",
+                }),
+              },
+            ],
+          };
+        }
+        return { content: [{ type: "text", text: JSON.stringify(data) }] };
+      }
+
+      if (initialResponse.status === 402) {
+        // Try the dual-protocol router first if the caller wired it up.
+        if (routing) {
+          const result = await routeDualProtocol402(
+            purchaseUrl,
+            purchaseInit,
+            initialResponse,
+            routing,
+          );
+          if (result.kind === "paid") {
+            const settled = await result.response.json().catch(() => ({}));
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    status: result.response.ok ? "completed" : "pending_payment",
+                    rail: result.rail,
+                    response: settled,
+                    message:
+                      result.response.status === 200
+                        ? `Tickets acquired successfully via ${result.rail}`
+                        : `Settlement attempted via ${result.rail}; server returned ${result.response.status}`,
+                  }),
+                },
+              ],
+            };
+          }
+
+          // Unrouted — surface the decoded challenge so the agent surface can
+          // handle the 402 manually (e.g. ask the user, route to a wallet UI).
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  status: "challenge_unrouted",
+                  reason: result.reason,
+                  challenge: result.challenge,
+                  message:
+                    "Payment required. The dual-protocol router could not pick a rail; surface the challenge to the user.",
+                }),
+              },
+            ],
+          };
+        }
+
+        // Legacy path: parse the `atlas:challenge` body and follow the
+        // `/atlas/v1/holds/:id/checkout` redirect flow. Preserved for
+        // backward compatibility with backends that don't yet emit MPP
+        // envelopes.
+        const legacyData = (await initialResponse
+          .json()
+          .catch(() => null)) as AtlasChallengeResponse | null;
+        const legacyChallenge = legacyData?.["atlas:challenge"];
+        if (legacyChallenge?.ticket_hold_id) {
+          const holdId = legacyChallenge.ticket_hold_id;
+          const checkoutResponse = await http.request<AtlasCheckoutResponse>({
+            method: "POST",
+            path: `/atlas/v1/holds/${holdId}/checkout`,
+            target: "backend",
+            headers: {
+              Authorization: authorization,
+              "Idempotency-Key": idempotencyKey,
+            },
+          });
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  status: "pending_payment",
+                  hold_id: holdId,
+                  checkout_url: checkoutResponse.data.checkout_url,
+                  expires_at: checkoutResponse.data.expires_at,
+                  message: "Payment required. Open the checkout URL to complete purchase.",
+                }),
+              },
+            ],
+          };
+        }
+
+        // 402 with neither MPP envelope nor legacy `atlas:challenge` —
+        // surface the raw body so the caller can debug.
         return {
           content: [
             {
               type: "text",
               text: JSON.stringify({
-                status: "completed",
-                redirect_url: (response.data as { redirect_url: string }).redirect_url,
-                message: "Tickets acquired successfully (free event)",
+                status: "payment_required",
+                raw_body: legacyData,
+                message: "402 received but body matched neither MPP nor legacy schema.",
               }),
             },
           ],
         };
       }
 
-      if (response.status === 402) {
-        const challenge = (response.data as AtlasChallengeResponse)["atlas:challenge"];
-        const holdId = challenge.ticket_hold_id;
-        const checkoutResponse = await http.request<AtlasCheckoutResponse>({
-          method: "POST",
-          path: `/atlas/v1/holds/${holdId}/checkout`,
-          target: "backend",
-          headers: {
-            Authorization: authorization,
-            "Idempotency-Key": idempotencyKey,
-          },
-        });
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                status: "pending_payment",
-                hold_id: holdId,
-                checkout_url: checkoutResponse.data.checkout_url,
-                expires_at: checkoutResponse.data.expires_at,
-                message: "Payment required. Open the checkout URL to complete purchase.",
-              }),
-            },
-          ],
-        };
-      }
-
+      const fallbackBody = await initialResponse.json().catch(() => null);
       return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(response.data),
-          },
-        ],
+        content: [{ type: "text", text: JSON.stringify(fallbackBody) }],
       };
     },
   );
