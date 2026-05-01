@@ -1,7 +1,7 @@
 {
   "name": "@atlasprotocol/mpp",
   "version": "0.1.1",
-  "description": "Standalone implementation of the Machine Payments Protocol (MPP) envelope: challenge / credential / receipt encode + sign + verify. Optional JWS wrapping layer for signed envelopes. Optional x402 client helper for agent-side payment + retry.",
+  "description": "Standalone implementation of the Machine Payments Protocol (MPP) envelope: challenge / credential / receipt encode + sign + verify. Optional JWS wrapping layer for signed envelopes. Optional x402 client (on-chain USDC) and stripe-mpp client (Stripe SPT) for agent-side payment + retry.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -30,6 +30,10 @@
     "./x402": {
       "types": "./dist/x402/index.d.ts",
       "import": "./dist/x402/index.js"
+    },
+    "./stripe-mpp": {
+      "types": "./dist/stripe-mpp/index.d.ts",
+      "import": "./dist/stripe-mpp/index.js"
     },
     "./package.json": "./package.json"
   },
