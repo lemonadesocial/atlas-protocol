@@ -230,6 +230,12 @@ importers:
 
   packages/server-sdk:
     dependencies:
+      '@atlasprotocol/mpp':
+        specifier: workspace:^
+        version: link:../mpp
+      stripe:
+        specifier: '>=14.0.0'
+        version: 22.1.0(@types/node@24.12.2)
       viem:
         specifier: ^2.21.0
         version: 2.48.4(typescript@5.9.3)(zod@4.4.1)
@@ -3057,6 +3063,15 @@ packages:
   strip-json-comments@3.1.1:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
+
+  stripe@22.1.0:
+    resolution: {integrity: sha512-w/xHyJGxXWnLPbNHG13sz/fae0MrFGC80Oz7YbICQymbfpqfEcsoG+6yG+9BWb81PWc4rrkeSO4wmTcmefmbLw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/node': '>=18'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
 
   strnum@1.1.2:
     resolution: {integrity: sha512-vrN+B7DBIoTTZjnPNewwhx6cBA/H+IS7rfW68n7XxC1y7uoiGQBxaKzqucGUgavX15dJgiGztLJ8vxuEzwqBdA==}
@@ -6268,6 +6283,10 @@ snapshots:
   strip-bom@3.0.0: {}
 
   strip-json-comments@3.1.1: {}
+
+  stripe@22.1.0(@types/node@24.12.2):
+    optionalDependencies:
+      '@types/node': 24.12.2
 
   strnum@1.1.2: {}
 

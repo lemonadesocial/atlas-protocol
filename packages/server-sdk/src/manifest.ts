@@ -1,7 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
+import { CHAIN_SPECS } from "./chain-specs.js";
 import type { ServerSdkConfig } from "./config.js";
-import type { AtlasManifest } from "./types/index.js";
+import type { AtlasManifest, AtlasSigningKeyJwk } from "./types/index.js";
 
 export interface GenerateManifestOptions {
   /** Optional space scope. When set, search is scoped to `/spaces/{spaceId}/search`. */
@@ -95,6 +96,160 @@ export function generateSpaceManifest(
   args: { spaceId: string } & Omit<GenerateManifestOptions, "spaceId">,
 ): AtlasManifest {
   return generateManifest(config, { ...args, spaceId: args.spaceId });
+}
+
+/**
+ * Spec-aligned manifest shape — matches the example in
+ * `01-whitepaper/docs/01-PROTOCOL-SPEC.md` §1.2 and SCHEMAS.md §1.
+ *
+ * NOTE: `01-PROTOCOL-SPEC.md` and `02-SCHEMAS.md` differ slightly on
+ * `capabilities` shape and the precise `endpoints` keys — the schema in
+ * SCHEMAS.md is treated as authoritative for nested objects (`endpoints`
+ * with `events_url`/`purchase_url`, `settlement.chains`/`token`).
+ * `capabilities` is emitted as an array per PROTOCOL-SPEC §1.2.
+ */
+export interface SpecAlignedAtlasManifest {
+  atlas: string;
+  name: string;
+  url: string;
+  logo?: string;
+  did?: string;
+  capabilities: string[];
+  endpoints: {
+    events_url: string;
+    search_url?: string;
+    purchase_url: string;
+  };
+  settlement: {
+    chains: string[];
+    token: string;
+  };
+  fee_model: "inclusive" | "additive";
+  signing_keys: AtlasSigningKeyJwk[];
+}
+
+export interface GenerateAtlasManifestOpts {
+  /** Platform display name. */
+  name: string;
+  /** Platform homepage URL. */
+  url: string;
+  /** Optional logo URL (PNG/SVG, ≥128×128). */
+  logo?: string;
+  /** Optional `did:web:<host>` identifier used for receipt verification. */
+  did?: string;
+  /** Absolute URL to the event feed endpoint. */
+  eventsUrl: string;
+  /** Absolute URL to the search endpoint. Optional. */
+  searchUrl?: string;
+  /**
+   * Absolute base URL for the purchase endpoint. The spec uses
+   * `{event_id}` templating — pass either the templated form (e.g.
+   * `https://x/atlas/v1/events/{event_id}/purchase`) or just the base, in
+   * which case the helper appends `/{event_id}/purchase`.
+   */
+  purchaseUrl: string;
+  /**
+   * Settlement chains the platform accepts. Strings should follow the
+   * `<chain>-usdc` (or `<chain>-usdm`) convention from settlement spec §1.
+   * Example: `["base-usdc", "optimism-usdc", "worldchain-usdc"]`.
+   */
+  supportedChains: string[];
+  /** Whether the platform accepts Stripe SPT (fiat) payments. */
+  acceptStripe: boolean;
+  /** Settlement token symbol. Defaults to "USDC". */
+  settlementToken?: string;
+  /** Fee model. Defaults to "inclusive". */
+  feeModel?: "inclusive" | "additive";
+  /** Capability identifiers (per PROTOCOL-SPEC §1.2). */
+  capabilities?: string[];
+  /** ATLAS protocol version. Defaults to "1.0". */
+  schemaVersion?: string;
+  /** JWK public keys advertised for receipt signing verification. */
+  signingKeys?: AtlasSigningKeyJwk[];
+}
+
+/**
+ * Convenience helper: produce a spec-aligned `.well-known/atlas.json` from a
+ * compact options object instead of a full `ServerSdkConfig`. The richer
+ * `generateManifest(config)` is still exported for consumers that want the
+ * superset shape (capabilities object, endpoints with receipt_verify, fee
+ * schedule, rate limits, payment_methods array).
+ *
+ * Where `01-PROTOCOL-SPEC.md` and `02-SCHEMAS.md` diverge:
+ *   - PROTOCOL-SPEC §1.2 has `events_url` at the top level + `capabilities`
+ *     as a string array. SCHEMAS.md §1 nests endpoints inside `endpoints`
+ *     and uses different fields.
+ *   - This helper follows SCHEMAS.md for the `endpoints` / `settlement`
+ *     nested shape (closer to what platforms actually need to advertise),
+ *     and uses PROTOCOL-SPEC's array form for `capabilities`. Mismatches
+ *     between the two specs are flagged in the PR body.
+ */
+export function generateAtlasManifest(opts: GenerateAtlasManifestOpts): SpecAlignedAtlasManifest {
+  if (opts.supportedChains.length === 0 && !opts.acceptStripe) {
+    throw new Error(
+      "generateAtlasManifest: must accept at least one rail (supportedChains[] or acceptStripe)",
+    );
+  }
+
+  const purchaseUrl = opts.purchaseUrl.includes("{event_id}")
+    ? opts.purchaseUrl
+    : `${trimTrailingSlash(opts.purchaseUrl)}/{event_id}/purchase`;
+
+  const capabilities = opts.capabilities ?? ["listing", "purchase", "settlement"];
+  const feeModel = opts.feeModel ?? "inclusive";
+  const settlementToken = opts.settlementToken ?? "USDC";
+
+  const manifest: SpecAlignedAtlasManifest = {
+    atlas: opts.schemaVersion ?? "1.0",
+    name: opts.name,
+    url: opts.url,
+    capabilities,
+    endpoints: {
+      events_url: opts.eventsUrl,
+      purchase_url: purchaseUrl,
+      ...(opts.searchUrl !== undefined && { search_url: opts.searchUrl }),
+    },
+    settlement: {
+      chains: [...opts.supportedChains],
+      token: settlementToken,
+    },
+    fee_model: feeModel,
+    signing_keys: opts.signingKeys ?? [],
+    ...(opts.logo !== undefined && { logo: opts.logo }),
+    ...(opts.did !== undefined && { did: opts.did }),
+  };
+
+  // If the platform accepts Stripe alongside on-chain rails, surface that as
+  // an extra capability so agents can discover it without parsing the
+  // settlement.chains list.
+  if (opts.acceptStripe && !manifest.capabilities.includes("stripe_spt")) {
+    manifest.capabilities = [...manifest.capabilities, "stripe_spt"];
+  }
+
+  return manifest;
+}
+
+/**
+ * Convenience: list the canonical settlement-chain identifiers (matching
+ * SCHEMAS.md `settlement.chains` form) for every non-experimental chain in
+ * `CHAIN_SPECS`. Useful when building `generateAtlasManifest` opts.
+ */
+export function defaultSupportedChainIdentifiers(): string[] {
+  const map: Partial<Record<keyof typeof CHAIN_SPECS, string>> = {
+    base_usdc: "base-usdc",
+    base_sepolia_usdc: "base-sepolia-usdc",
+    optimism_usdc: "optimism-usdc",
+    arbitrum_usdc: "arbitrum-usdc",
+    polygon_usdc: "polygon-usdc",
+    zksync_usdc: "zksync-usdc",
+    worldchain_usdc: "worldchain-usdc",
+    megaeth_usdm: "megaeth-usdm",
+    tempo_usdc: "tempo-usdc",
+  };
+  return (Object.keys(CHAIN_SPECS) as Array<keyof typeof CHAIN_SPECS>)
+    .filter((key) => !CHAIN_SPECS[key].experimental)
+    .map((key) => map[key])
+    .filter((s): s is string => typeof s === "string");
 }
 
 /**

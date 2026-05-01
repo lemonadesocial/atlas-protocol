@@ -54,14 +54,17 @@ function fakeEvmClient(opts: {
 }
 
 describe("SUPPORTED_PAYMENT_METHODS", () => {
-  it("exposes all chains migrated from lemonade-backend", () => {
+  it("exposes every multi-L2 chain plus Stripe SPT", () => {
     expect(SUPPORTED_PAYMENT_METHODS).toEqual([
       "tempo_usdc",
       "base_usdc",
+      "base_sepolia_usdc",
       "arbitrum_usdc",
       "polygon_usdc",
       "optimism_usdc",
       "zksync_usdc",
+      "worldchain_usdc",
+      "megaeth_usdm",
       "stripe_spt",
     ]);
   });

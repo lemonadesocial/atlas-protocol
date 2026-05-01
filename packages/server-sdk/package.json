@@ -34,7 +34,16 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@atlasprotocol/mpp": "workspace:^",
     "viem": "^2.21.0"
+  },
+  "peerDependencies": {
+    "stripe": ">=14.0.0"
+  },
+  "peerDependenciesMeta": {
+    "stripe": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
