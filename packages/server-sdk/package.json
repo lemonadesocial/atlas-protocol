@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@atlasprotocol/mpp": "workspace:^",
-    "viem": "^2.21.0"
+    "viem": "^2.48.7"
   },
   "peerDependencies": {
     "stripe": ">=14.0.0"

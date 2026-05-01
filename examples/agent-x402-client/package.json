@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@atlasprotocol/mpp": "workspace:*",
-    "viem": "^2.0.0"
+    "viem": "^2.48.7"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
