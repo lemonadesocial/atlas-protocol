@@ -6,6 +6,7 @@
     { "path": "./packages/mpp" },
     { "path": "./packages/connector-framework" },
     { "path": "./packages/ipfs" },
-    { "path": "./examples/connector-eventbrite" }
+    { "path": "./examples/connector-eventbrite" },
+    { "path": "./examples/agent-x402-client" }
   ]
 }
