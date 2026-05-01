@@ -177,6 +177,13 @@ importers:
         version: 2.1.9(@types/node@24.12.2)
 
   packages/agent-tools:
+    dependencies:
+      '@atlasprotocol/mpp':
+        specifier: workspace:^
+        version: link:../mpp
+      viem:
+        specifier: ^2.0.0
+        version: 2.48.4(typescript@5.9.3)(zod@4.4.1)
     devDependencies:
       '@langchain/core':
         specifier: ^0.3.0

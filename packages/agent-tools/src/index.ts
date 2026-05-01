@@ -5,8 +5,25 @@
  * HTTP layer.
  */
 
-export type { AtlasToolsConfig, Logger } from "./config.js";
+export type {
+  AtlasMcpToolsConfig,
+  AtlasMppRoutingConfig,
+  AtlasPaymentNotification,
+  AtlasToolsConfig,
+  Logger,
+  PreferredRail,
+  ViemAccount,
+  ViemChainLike,
+} from "./config.js";
 export { noopLogger, resolveConfig } from "./config.js";
+
+export type {
+  DecodedMppChallenge,
+  DualProtocolRoutingResult,
+  MppPaymentMethodOffer,
+  UnroutedReason,
+} from "./dual-protocol-router.js";
+export { routeDualProtocol402 } from "./dual-protocol-router.js";
 
 export type { AtlasHttpClient, AtlasRequestOptions, AtlasResponse } from "./http-client.js";
 export { createAtlasHttpClient } from "./http-client.js";
