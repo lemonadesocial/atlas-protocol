@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.1.1...server-sdk-v0.2.0) (2026-05-01)
+
+
+### Features
+
+* **server-sdk:** add challenge gen, Stripe verifier, multi-L2 specs ([#25](https://github.com/lemonadesocial/atlas-protocol/issues/25)) ([4bbc3bf](https://github.com/lemonadesocial/atlas-protocol/commit/4bbc3bfd4285b7889926c7334dccc078dc19d226))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @atlasprotocol/mpp bumped to 0.2.0
+
 ## [0.1.1](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.1.0...server-sdk-v0.1.1) (2026-04-30)
 
 
