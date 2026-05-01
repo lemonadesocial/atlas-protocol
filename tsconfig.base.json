@@ -25,6 +25,7 @@
       "@atlasprotocol/server-sdk": ["./packages/server-sdk/src/index.ts"],
       "@atlasprotocol/mpp": ["./packages/mpp/src/index.ts"],
       "@atlasprotocol/mpp/x402": ["./packages/mpp/src/x402/index.ts"],
+      "@atlasprotocol/mpp/stripe-mpp": ["./packages/mpp/src/stripe-mpp/index.ts"],
       "@atlasprotocol/connector-framework": ["./packages/connector-framework/src/index.ts"],
       "@atlasprotocol/ipfs": ["./packages/ipfs/src/index.ts"]
     }

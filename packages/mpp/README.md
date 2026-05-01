@@ -1,19 +1,20 @@
 # @atlasprotocol/mpp
 
-Standalone implementation of the **Machine Payments Protocol (MPP)** envelope, plus an optional JWS signing layer and an optional x402 client helper for agent-side payment + retry.
+Standalone implementation of the **Machine Payments Protocol (MPP)** envelope, plus an optional JWS signing layer and two optional client helpers for agent-side payment + retry: `x402` (on-chain USDC) and `stripe-mpp` (Stripe SPT).
 
 > The package has zero coupling to `@atlasprotocol/server-sdk`. It can be used by any HTTP-402 server or agent client.
 
-## Two surfaces
+## Three surfaces
 
-`@atlasprotocol/mpp` exposes two independent surfaces. Pick the one you need — they do not depend on each other and you can use either alone.
+`@atlasprotocol/mpp` exposes three independent surfaces. Pick the one you need — they do not depend on each other and you can use any subset alone.
 
-| Surface                  | Import                              | What it does                                                                                                            | Runtime deps          |
-| ------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| **Wire format** (always) | `@atlasprotocol/mpp`                | `encode` / `decode` / `serialize` / `deserialize` for the canonical Challenge / Credential / Receipt envelope. Optional `signEnvelope` / `verifyEnvelope` JWS layer. | `jose` only           |
-| **x402 client** (opt-in) | `@atlasprotocol/mpp/x402`           | `fetchWithPayment` — drop-in `fetch` that handles a 402 by paying on-chain (default: USDC ERC-20 via viem) and retrying. | `viem` (peer, optional) |
+| Surface                       | Import                              | What it does                                                                                                            | Runtime deps          |
+| ----------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| **Wire format** (always)      | `@atlasprotocol/mpp`                | `encode` / `decode` / `serialize` / `deserialize` for the canonical Challenge / Credential / Receipt envelope. Optional `signEnvelope` / `verifyEnvelope` JWS layer. | `jose` only           |
+| **x402 client** (opt-in)      | `@atlasprotocol/mpp/x402`           | `fetchWithPayment` — drop-in `fetch` that handles a 402 by paying on-chain (default: USDC ERC-20 via viem) and retrying. | `viem` (peer, optional) |
+| **stripe-mpp client** (opt-in) | `@atlasprotocol/mpp/stripe-mpp`     | `fetchWithPaymentSpt` — drop-in `fetch` that handles a 402 by completing a Stripe SPT (Stablecoin Payment Token) charge through a caller-supplied callback and retrying. | none                  |
 
-The wire format is intentionally chain-agnostic: it does not verify on-chain payments and it does not move funds. **On-chain verification (server-side) and payment + retry (client-side) are the consumer's job.** The `x402` subpath is a reference client implementation; the server-side counterpart lives in your own backend (see `lemonade-backend/src/app/services/atlas/mpp.ts` for the canonical reference).
+The wire format is intentionally chain-agnostic: it does not verify on-chain payments and it does not move funds. **On-chain verification (server-side), x402 settlement (client-side), and Stripe authorization + SPT minting (client-side) are the consumer's job.** The `x402` and `stripe-mpp` subpaths are reference client implementations; the server-side counterpart lives in `@atlasprotocol/server-sdk` (`generateMppChallenge`, `verifyPayment`, `verifyStripePayment`).
 
 ## Install
 
@@ -21,6 +22,7 @@ The wire format is intentionally chain-agnostic: it does not verify on-chain pay
 pnpm add @atlasprotocol/mpp
 # Add viem only if you plan to use the x402 subpath:
 pnpm add viem
+# stripe-mpp has no runtime deps — the agent surface owns the Stripe call.
 ```
 
 ## Wire format
@@ -155,6 +157,56 @@ Failure modes:
 - **`maxAmountUsdcMicro`** — per-request cap in 6-decimal micro-units. 1 USDC = `1_000_000n`. Pick the smallest cap that covers the endpoints you call.
 
 For a multi-endpoint agent, scope these to the specific call (e.g. wrap `fetchWithPayment` in a thin per-endpoint wrapper that pins the allowlists).
+
+## Client-side: pay a 402 challenge with Stripe SPT
+
+The `stripe-mpp` subpath gives you a drop-in `fetch` that handles a 402 by completing a Stripe Stablecoin Payment Token charge. Stripe's SPT pipeline lets the buyer pay in fiat (cards / Apple Pay / Google Pay / Link) and converts to USDC server-side. **The Stripe SDK call lives in your code, not in this package** — `stripe-mpp` calls back into your `getSpt` so the agent surface (Claude / ChatGPT / Gemini) can show the user the amount, get authorization, and complete the PaymentIntent however it wants.
+
+```ts
+import { fetchWithPaymentSpt } from "@atlasprotocol/mpp/stripe-mpp";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+const response = await fetchWithPaymentSpt(
+  "https://api.example.com/atlas/v1/events/evt_42/purchase",
+  { method: "POST", body: JSON.stringify({ ticket_type_id: "ga", quantity: 1 }) },
+  {
+    // Safety: refuse 402s asking for more than this. In CENTS (USD).
+    maxAmountUsdCents: 5000,
+    // Safety: only complete SPTs for known platform receivers.
+    allowedReceivers: ["stripe:acct_atlas_demo"],
+    // Caller-owned: prompt the user, complete the Stripe PaymentIntent,
+    // return the payment_intent_id once it has succeeded.
+    getSpt: async ({ amount, currency, challenge_id }) => {
+      // amount is in cents; currency is always "usd"
+      const intent = await stripe.paymentIntents.create({
+        amount,
+        currency,
+        confirm: true,
+        payment_method: process.env.PAYMENT_METHOD_ID,
+        metadata: { atlas_challenge: challenge_id },
+      });
+      if (intent.status !== "succeeded") {
+        throw new Error(`Stripe intent did not succeed: ${intent.status}`);
+      }
+      return intent.id;
+    },
+    onPayment: ({ paymentIntentId, amountCents }) => {
+      console.log(`paid ${amountCents}¢ via Stripe, intent=${paymentIntentId}`);
+    },
+  },
+);
+```
+
+Failure modes:
+
+- **No 402** → response is returned unchanged.
+- **Safety check fails** → throws `MppPaymentRefusedError` with `err.reason` set to one of `no_stripe_method_offered`, `receiver-not-allowed`, `amount-exceeds-cap`, `amount-malformed`, `currency-not-usd`, `challenge-malformed`, `challenge-missing`. **No call to `getSpt` is made.**
+- **`getSpt` rejects** → wrapped as `MppPaymentRefusedError` with `reason: "spt-callback-failed"`.
+- **Server returns 402 again on retry** → that response is returned. The helper does not loop.
+
+The retry credential carries the Stripe `payment_intent_id` in `metadata.payment_intent_id` — the form the server-side `verifyStripePayment` (in `@atlasprotocol/server-sdk`) inspects when accepting a settlement.
 
 ## Supported rails
 
