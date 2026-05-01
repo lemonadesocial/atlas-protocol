@@ -7,6 +7,7 @@
     { "path": "./packages/connector-framework" },
     { "path": "./packages/ipfs" },
     { "path": "./examples/connector-eventbrite" },
-    { "path": "./examples/agent-x402-client" }
+    { "path": "./examples/agent-x402-client" },
+    { "path": "./examples/dual-protocol-server" }
   ]
 }
