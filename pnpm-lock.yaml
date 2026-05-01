@@ -102,6 +102,37 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@24.12.2)
 
+  examples/dual-protocol-server:
+    dependencies:
+      '@atlasprotocol/mpp':
+        specifier: workspace:*
+        version: link:../../packages/mpp
+      '@atlasprotocol/server-sdk':
+        specifier: workspace:*
+        version: link:../../packages/server-sdk
+      '@hono/node-server':
+        specifier: ^1.13.0
+        version: 1.19.14(hono@4.12.15)
+      hono:
+        specifier: ^4.6.0
+        version: 4.12.15
+      stripe:
+        specifier: ^14.0.0
+        version: 14.25.0
+      viem:
+        specifier: ^2.0.0
+        version: 2.48.4(typescript@5.9.3)(zod@4.4.1)
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.12.2
+      tsx:
+        specifier: ^4.0.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   examples/langchain-agent:
     dependencies:
       '@atlasprotocol/agent-tools':
@@ -3092,6 +3123,10 @@ packages:
   strip-json-comments@3.1.1:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
+
+  stripe@14.25.0:
+    resolution: {integrity: sha512-wQS3GNMofCXwH8TSje8E1SE8zr6ODiGtHQgPtO95p9Mb4FhKC9jvXR2NUTpZ9ZINlckJcFidCmaTFV4P6vsb9g==}
+    engines: {node: '>=12.*'}
 
   stripe@22.1.0:
     resolution: {integrity: sha512-w/xHyJGxXWnLPbNHG13sz/fae0MrFGC80Oz7YbICQymbfpqfEcsoG+6yG+9BWb81PWc4rrkeSO4wmTcmefmbLw==}
@@ -6312,6 +6347,11 @@ snapshots:
   strip-bom@3.0.0: {}
 
   strip-json-comments@3.1.1: {}
+
+  stripe@14.25.0:
+    dependencies:
+      '@types/node': 24.12.2
+      qs: 6.15.1
 
   stripe@22.1.0(@types/node@24.12.2):
     optionalDependencies:
