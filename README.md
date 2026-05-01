@@ -87,16 +87,30 @@ CONTRACTS            FeeRouter + AtlasTicket + RewardLedger + RegistryPointer + 
 
 ---
 
-## Quick Start
+## Quick start for event platforms
+
+Any event platform can install three packages and accept agent purchases over both rails out of the box: discoverable from any agent surface (Claude / ChatGPT / Gemini / your own), settled either on-chain (multi-L2 USDC via x402) or in fiat (Stripe SPT, USDC out).
+
+```bash
+npm install @atlasprotocol/server-sdk @atlasprotocol/agent-tools @atlasprotocol/mpp
+# Plus the SDKs you actually call:
+npm install stripe viem
+```
+
+Wire your purchase route to issue a 402 with `generateMppChallenge` and verify the retry credential with `verifyPayment` (on-chain) or `verifyStripePayment` (fiat). The reference implementation in [`examples/dual-protocol-server/`](./examples/dual-protocol-server/) is a complete Hono service with all four ATLAS endpoints (`/.well-known/atlas.json`, `/atlas/v1/search`, `/atlas/v1/events/:id`, `/atlas/v1/events/:id/purchase`); copy its four route handlers into your existing service and swap `src/data.ts` for whatever your event database is.
+
+For the agent side of the same flow, see [`examples/agent-dual-client/`](./examples/agent-dual-client/) — it pays the 402 with x402 if a wallet is configured and falls back to stripe-mpp if a Stripe key is.
+
+## Quick reference
 
 **For agent developers:**
 ```bash
-npm install @atlasprotocol/client
+npm install @atlasprotocol/agent-tools @atlasprotocol/mpp
 ```
 
 **For platform integrators:**
 ```bash
-npm install @atlasprotocol/sdk
+npm install @atlasprotocol/server-sdk @atlasprotocol/mpp
 ```
 
 **For organizers and builders:**
@@ -110,6 +124,10 @@ lemonade space create --name "Brooklyn Jazz Collective" --domain bjc.events --ty
 # Create an event
 lemonade event create --space bjc_abc123 --title "Late Night Jazz" --date 2026-04-15T21:00 --price 25.00
 ```
+
+## Per-chain deploy runbooks
+
+Each supported settlement chain has its own deploy runbook in [`contracts/deploy/`](./contracts/deploy/) — required env vars, canonical stablecoin contract, `forge script` invocation, post-deploy verification command. Production-ready: Base, Optimism, Arbitrum, World Chain. Experimental: MegaETH (USDM until Circle ships canonical USDC). Placeholder: Tempo (pending public mainnet).
 
 ---
 

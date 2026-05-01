@@ -39,6 +39,28 @@ importers:
         specifier: ^8.0.0
         version: 8.59.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
 
+  examples/agent-dual-client:
+    dependencies:
+      '@atlasprotocol/mpp':
+        specifier: workspace:*
+        version: link:../../packages/mpp
+      stripe:
+        specifier: ^14.0.0
+        version: 14.25.0
+      viem:
+        specifier: ^2.0.0
+        version: 2.48.4(typescript@5.9.3)(zod@4.4.1)
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.12.2
+      tsx:
+        specifier: ^4.0.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   examples/agent-x402-client:
     dependencies:
       '@atlasprotocol/mpp':
