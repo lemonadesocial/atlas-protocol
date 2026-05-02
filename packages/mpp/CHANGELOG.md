@@ -2,6 +2,13 @@
 
 All notable changes to `@atlasprotocol/mpp` are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this package adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/lemonadesocial/atlas-protocol/compare/mpp-v0.2.0...mpp-v0.2.0) (2026-05-02)
+
+
+### Features
+
+* **server-sdk:** correctness layer — receipts, holds, replay, expiry, approval flow ([#35](https://github.com/lemonadesocial/atlas-protocol/issues/35)) ([ad369c6](https://github.com/lemonadesocial/atlas-protocol/commit/ad369c6f2df2c31b3057ed22eaf1dd0ba54c9dee))
+
 ## [0.2.0](https://github.com/lemonadesocial/atlas-protocol/compare/mpp-v0.1.1...mpp-v0.2.0) (2026-05-01)
 
 
