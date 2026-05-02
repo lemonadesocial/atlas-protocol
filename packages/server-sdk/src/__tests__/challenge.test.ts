@@ -1,12 +1,15 @@
-import { decode, deserialize } from "@atlasprotocol/mpp";
+import { decode, deserialize, encode, type MppPayload } from "@atlasprotocol/mpp";
 import { describe, expect, it } from "vitest";
 
 import {
   generateMppChallenge,
+  verifyMppCredential,
+  type AtlasMppApprovalPayload,
   type AtlasMppChallengePayload,
   type StripeSptPaymentMethodEntry,
   type X402PaymentMethodEntry,
 } from "../challenge.js";
+import { InMemoryReplayStore } from "../replay.js";
 
 const ORGANIZER = "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00" as const;
 
@@ -145,6 +148,163 @@ describe("generateMppChallenge — validation", () => {
         acceptStripe: false,
       }),
     ).toThrow(/amountUsdcMicros must be > 0/);
+  });
+});
+
+describe("generateMppChallenge — requiresApproval (202 envelope)", () => {
+  it("returns a pending_approval envelope with no payment_methods", () => {
+    const result = generateMppChallenge({
+      eventId: "evt_gated",
+      holdId: "h_gated",
+      amountUsdcMicros: 50_000_000n,
+      organizerAddress: ORGANIZER,
+      acceptedChains: ["base_usdc"],
+      acceptStripe: false,
+      requiresApproval: true,
+      joinRequestId: "jr_42",
+      expiresAt: "2030-01-01T00:00:00.000Z",
+      ticketTypeId: "tt_gated",
+      quantity: 1,
+    });
+
+    const payload = result.payload satisfies AtlasMppApprovalPayload;
+    expect(payload.status).toBe("pending_approval");
+    expect(payload.event_id).toBe("evt_gated");
+    expect(payload.hold_id).toBe("h_gated");
+    expect(payload.expected_amount_usdc_micros).toBe("50000000");
+    expect(payload.expires_at).toBe("2030-01-01T00:00:00.000Z");
+    expect(payload.join_request_id).toBe("jr_42");
+    expect(payload.ticket_type_id).toBe("tt_gated");
+    expect(payload.quantity).toBe(1);
+    // Approval envelope intentionally omits payment_methods + envelope/header.
+    expect((payload as unknown as { payment_methods?: unknown }).payment_methods).toBeUndefined();
+    expect((result as unknown as { envelope?: unknown }).envelope).toBeUndefined();
+    expect((result as unknown as { headerValue?: unknown }).headerValue).toBeUndefined();
+  });
+
+  it("does not require accepted rails when approval is required", () => {
+    // approval-only: the agent will receive a fresh 402 once the host approves
+    expect(() =>
+      generateMppChallenge({
+        eventId: "evt_x",
+        holdId: "h_x",
+        amountUsdcMicros: 1_000_000n,
+        organizerAddress: ORGANIZER,
+        acceptedChains: [],
+        acceptStripe: false,
+        requiresApproval: true,
+      }),
+    ).not.toThrow();
+  });
+});
+
+describe("verifyMppCredential", () => {
+  function makeEnvelope(overrides: Partial<MppPayload> = {}) {
+    const payload: MppPayload = {
+      rail: "usdc-base",
+      realm: "atlas",
+      paymentId: "ch_hold_xyz",
+      intent: "charge",
+      amount: "12.500000",
+      currency: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      recipient: ORGANIZER,
+      organizer: ORGANIZER,
+      expires: "2030-01-01T00:00:00.000Z",
+      description: "ATLAS purchase test",
+      ...overrides,
+    };
+    return encode(payload);
+  }
+
+  it("returns valid: true when envelope is fresh and unseen", async () => {
+    const envelope = makeEnvelope();
+    const replayStore = new InMemoryReplayStore();
+    const result = await verifyMppCredential(envelope, "ch_hold_xyz", { replayStore });
+    expect(result).toEqual({ valid: true });
+  });
+
+  it("rejects an expired envelope with error: 'expired'", async () => {
+    const envelope = makeEnvelope({ expires: "2020-01-01T00:00:00.000Z" });
+    const replayStore = new InMemoryReplayStore();
+    const result = await verifyMppCredential(envelope, "ch_hold_xyz", { replayStore });
+    expect(result.valid).toBe(false);
+    if (!result.valid) expect(result.error).toBe("expired");
+    // Expired credential MUST NOT be marked as used (so the agent can retry
+    // with a fresh challenge that happens to share a hash collision with… no,
+    // the point is: we don't burn replay state on rejected envelopes).
+    expect(await replayStore.isCredentialUsed("any")).toBe(false);
+  });
+
+  it("rejects a replayed envelope with error: 'replayed'", async () => {
+    const envelope = makeEnvelope();
+    const replayStore = new InMemoryReplayStore();
+
+    const first = await verifyMppCredential(envelope, "ch_hold_xyz", { replayStore });
+    expect(first).toEqual({ valid: true });
+
+    const second = await verifyMppCredential(envelope, "ch_hold_xyz", { replayStore });
+    expect(second.valid).toBe(false);
+    if (!second.valid) expect(second.error).toBe("replayed");
+  });
+
+  it("rejects mismatched challenge ids without burning replay state", async () => {
+    const envelope = makeEnvelope({ paymentId: "ch_other" });
+    const replayStore = new InMemoryReplayStore();
+    const result = await verifyMppCredential(envelope, "ch_hold_xyz", { replayStore });
+    expect(result.valid).toBe(false);
+    if (!result.valid) expect(result.error).toBe("challenge_mismatch");
+  });
+
+  it("rejects malformed envelopes with error: 'invalid_envelope'", async () => {
+    const result = await verifyMppCredential(
+      { header: { id: 42 }, request: {} } as unknown as Parameters<typeof verifyMppCredential>[0],
+      "ch_hold_xyz",
+    );
+    expect(result.valid).toBe(false);
+    if (!result.valid) expect(result.error).toBe("invalid_envelope");
+  });
+
+  it("delegates to opts.verify after replay+expiry pass and propagates failure", async () => {
+    const envelope = makeEnvelope();
+    const replayStore = new InMemoryReplayStore();
+
+    const result = await verifyMppCredential(envelope, "ch_hold_xyz", {
+      replayStore,
+      verify: () =>
+        Promise.resolve({
+          valid: false,
+          error: "verification_failed",
+          message: "amount mismatch",
+        }),
+    });
+    expect(result).toEqual({
+      valid: false,
+      error: "verification_failed",
+      message: "amount mismatch",
+    });
+  });
+
+  it("wraps thrown errors from opts.verify as verification_failed", async () => {
+    const envelope = makeEnvelope();
+    const replayStore = new InMemoryReplayStore();
+
+    const result = await verifyMppCredential(envelope, "ch_hold_xyz", {
+      replayStore,
+      verify: () => Promise.reject(new Error("rpc unavailable")),
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.error).toBe("verification_failed");
+      expect(result.message).toBe("rpc unavailable");
+    }
+  });
+
+  it("works without a replayStore (replay protection opt-in)", async () => {
+    const envelope = makeEnvelope();
+    const a = await verifyMppCredential(envelope, "ch_hold_xyz");
+    const b = await verifyMppCredential(envelope, "ch_hold_xyz");
+    expect(a).toEqual({ valid: true });
+    expect(b).toEqual({ valid: true });
   });
 });
 

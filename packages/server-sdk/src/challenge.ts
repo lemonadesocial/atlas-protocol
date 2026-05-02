@@ -1,6 +1,7 @@
 import { encode, serialize, type MppEnvelope, type MppPayload } from "@atlasprotocol/mpp";
 
 import { CHAIN_SPECS } from "./chain-specs.js";
+import { credentialHash, type ReplayStore } from "./replay.js";
 import type { AtlasPaymentMethodType } from "./types/index.js";
 
 /**
@@ -59,6 +60,39 @@ export interface AtlasMppChallengePayload {
   payment_methods: AtlasPaymentMethodEntry[];
 }
 
+/**
+ * 202-shaped envelope returned for events that require host approval before
+ * payment can proceed (see `lemonade-mpp/02-agent-ticket-purchasing/PRD.md`
+ * §US-7). `payment_methods` is intentionally omitted: the agent MUST wait
+ * for an approval webhook (or poll) and obtain a fresh 402 challenge when
+ * approved.
+ */
+export interface AtlasMppApprovalPayload {
+  /** Stable challenge id used in idempotency keys + replay stores. */
+  challenge_id: string;
+  event_id: string;
+  hold_id: string;
+  ticket_type_id?: string;
+  quantity?: number;
+  /** Total amount due, in USDC micro-units (6 decimals). */
+  expected_amount_usdc_micros: string;
+  /** ISO-8601 expiry; matches the hold expiry on the server side. */
+  expires_at: string;
+  /**
+   * Discriminator. Always `"pending_approval"` on this envelope.
+   * Agents branch on this when parsing the response body.
+   */
+  status: "pending_approval";
+  /**
+   * Optional join-request id the agent can poll
+   * (`GET /atlas/v1/events/:eventId/requests/:requestId`).
+   */
+  join_request_id?: string;
+}
+
+/** Discriminated union of 402 (`payment_required`) and 202 (`pending_approval`). */
+export type AtlasMppChallengeEnvelope = AtlasMppChallengePayload | AtlasMppApprovalPayload;
+
 export interface GenerateMppChallengeOpts {
   eventId: string;
   holdId: string;
@@ -89,6 +123,15 @@ export interface GenerateMppChallengeOpts {
    * Override per-chain RPC URL. Falls back to `CHAIN_SPECS[chain].defaultRpcUrl`.
    */
   rpcUrlsByChain?: Partial<Record<keyof typeof CHAIN_SPECS, string>>;
+  /**
+   * When true, the helper returns a 202-shaped envelope without a
+   * `payment_methods` array (see `AtlasMppApprovalPayload`). Used for
+   * events whose ticket type is `approval_required` — the agent submits a
+   * join request, then receives a fresh 402 once the host approves.
+   */
+  requiresApproval?: boolean;
+  /** Optional join-request id surfaced in the approval envelope. */
+  joinRequestId?: string;
 }
 
 export interface GenerateMppChallengeResult {
@@ -110,17 +153,37 @@ export interface GenerateMppChallengeResult {
 }
 
 /**
+ * Result returned when `requiresApproval === true`. The HTTP status SHOULD be
+ * 202 Accepted, no `WWW-Authenticate` header is set, and the body is the
+ * `AtlasMppApprovalPayload`.
+ */
+export interface GenerateMppApprovalResult {
+  payload: AtlasMppApprovalPayload;
+}
+
+/**
  * Build the JSON body + MPP envelope + WWW-Authenticate header value for an
  * ATLAS 402 challenge. The platform decides which chains it accepts and
  * whether it accepts Stripe SPT; this helper produces a multi-rail challenge
  * agents can route from.
+ *
+ * When `opts.requiresApproval === true`, returns a 202-shaped
+ * `GenerateMppApprovalResult` instead — no envelope, no `payment_methods`,
+ * no `WWW-Authenticate` header value. Agents must wait for approval before
+ * retrying.
  */
-export function generateMppChallenge(opts: GenerateMppChallengeOpts): GenerateMppChallengeResult {
-  if (opts.acceptedChains.length === 0 && !opts.acceptStripe) {
-    throw new Error(
-      "generateMppChallenge: at least one accepted rail required (acceptedChains[] or acceptStripe)",
-    );
-  }
+export function generateMppChallenge(
+  opts: GenerateMppChallengeOpts & { requiresApproval: true },
+): GenerateMppApprovalResult;
+export function generateMppChallenge(
+  opts: GenerateMppChallengeOpts & { requiresApproval?: false },
+): GenerateMppChallengeResult;
+export function generateMppChallenge(
+  opts: GenerateMppChallengeOpts,
+): GenerateMppChallengeResult | GenerateMppApprovalResult;
+export function generateMppChallenge(
+  opts: GenerateMppChallengeOpts,
+): GenerateMppChallengeResult | GenerateMppApprovalResult {
   if (opts.amountUsdcMicros <= 0n) {
     throw new Error("generateMppChallenge: amountUsdcMicros must be > 0");
   }
@@ -128,6 +191,27 @@ export function generateMppChallenge(opts: GenerateMppChallengeOpts): GenerateMp
   const challengeId = opts.challengeId ?? `ch_${opts.holdId}`;
   const expiresAt = opts.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString();
   const realm = opts.realm ?? "atlas";
+
+  if (opts.requiresApproval) {
+    const approvalPayload: AtlasMppApprovalPayload = {
+      challenge_id: challengeId,
+      event_id: opts.eventId,
+      hold_id: opts.holdId,
+      expected_amount_usdc_micros: opts.amountUsdcMicros.toString(),
+      expires_at: expiresAt,
+      status: "pending_approval",
+      ...(opts.ticketTypeId !== undefined && { ticket_type_id: opts.ticketTypeId }),
+      ...(opts.quantity !== undefined && { quantity: opts.quantity }),
+      ...(opts.joinRequestId !== undefined && { join_request_id: opts.joinRequestId }),
+    };
+    return { payload: approvalPayload };
+  }
+
+  if (opts.acceptedChains.length === 0 && !opts.acceptStripe) {
+    throw new Error(
+      "generateMppChallenge: at least one accepted rail required (acceptedChains[] or acceptStripe)",
+    );
+  }
 
   const amountDecimal = formatUsdcMicroAsDecimal(opts.amountUsdcMicros);
 
@@ -288,4 +372,123 @@ function formatUsdMicroAsTwoDecimal(micros: bigint): string {
   const whole = abs / 100n;
   const fraction = abs % 100n;
   return `${negative ? "-" : ""}${whole.toString()}.${fraction.toString().padStart(2, "0")}`;
+}
+
+/** Failure modes emitted by `verifyMppCredential`. */
+export type VerifyMppCredentialError =
+  | "replayed"
+  | "expired"
+  | "invalid_envelope"
+  | "challenge_mismatch"
+  | "verification_failed";
+
+export type VerifyMppCredentialResult =
+  | { valid: true }
+  | { valid: false; error: VerifyMppCredentialError; message?: string };
+
+export interface VerifyMppCredentialOpts {
+  /**
+   * Replay store. Pre-checked first; if the credential hash has already been
+   * marked used, returns `{ valid: false, error: "replayed" }`. On the
+   * happy path the hash is recorded after envelope-level checks pass.
+   *
+   * Opt-in: when omitted, replay protection is the host's responsibility
+   * (mirrors `verifyPayment(deps.isReplay)`).
+   */
+  replayStore?: ReplayStore;
+  /**
+   * Override clock for tests / time-skew tolerance. Defaults to `Date.now()`.
+   */
+  now?: () => Date;
+  /**
+   * Optional async hook delegated to the host's payment verifier (e.g.
+   * `verifyPayment` in `payment-verify.ts`). Called after replay/expiry
+   * checks pass. Return shape mirrors `VerifyMppCredentialResult`.
+   *
+   * The host is responsible for matching the envelope's payment proof against
+   * its expected challenge — this layer only enforces replay + expiry.
+   */
+  verify?: (envelope: MppEnvelope) => Promise<VerifyMppCredentialResult>;
+}
+
+/**
+ * Validate an MPP credential envelope. Performs three checks in order:
+ *
+ *   1. The envelope's `paymentId` matches the supplied `challengeId`. A
+ *      mismatch returns `{ error: "challenge_mismatch" }` and does NOT
+ *      mark the credential used.
+ *   2. The envelope `expires` claim is in the future. An expired envelope
+ *      returns `{ error: "expired" }` and does NOT mark the credential used.
+ *   3. The credential hash has not been seen by `replayStore`. Returns
+ *      `{ error: "replayed" }` if it has.
+ *
+ * On success, the credential hash is recorded via
+ * `replayStore.markCredentialUsed(...)` and `opts.verify` is invoked (if
+ * supplied) to perform the host's deeper payment verification.
+ *
+ * Pure function over the envelope and the supplied stores: no network calls
+ * unless the host's `opts.verify` makes them. The payment-rail-specific
+ * verification (chain RPC, Stripe API) lives in `payment-verify.ts`.
+ */
+export async function verifyMppCredential(
+  envelope: MppEnvelope,
+  challengeId: string,
+  opts: VerifyMppCredentialOpts = {},
+): Promise<VerifyMppCredentialResult> {
+  if (
+    !envelope ||
+    typeof envelope !== "object" ||
+    !("header" in envelope) ||
+    !("request" in envelope)
+  ) {
+    return { valid: false, error: "invalid_envelope" };
+  }
+  const header = (envelope as { header?: { id?: unknown; expires?: unknown } }).header;
+  if (!header || typeof header.id !== "string") {
+    return { valid: false, error: "invalid_envelope" };
+  }
+
+  if (header.id !== challengeId) {
+    return {
+      valid: false,
+      error: "challenge_mismatch",
+      message: `header.id ${header.id} != challengeId ${challengeId}`,
+    };
+  }
+
+  if (typeof header.expires !== "string") {
+    return { valid: false, error: "invalid_envelope" };
+  }
+  const now = (opts.now ?? (() => new Date()))();
+  const expiresAt = new Date(header.expires);
+  if (Number.isNaN(expiresAt.getTime())) {
+    return { valid: false, error: "invalid_envelope" };
+  }
+  if (now >= expiresAt) {
+    return { valid: false, error: "expired" };
+  }
+
+  if (opts.replayStore) {
+    const hash = credentialHash(envelope);
+    const seen = await opts.replayStore.isCredentialUsed(hash);
+    if (seen) {
+      return { valid: false, error: "replayed" };
+    }
+    const marked = await opts.replayStore.markCredentialUsed(hash);
+    if (!marked.first) {
+      // Concurrent caller raced us — treat as replay.
+      return { valid: false, error: "replayed" };
+    }
+  }
+
+  if (opts.verify) {
+    try {
+      return await opts.verify(envelope);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "verification threw";
+      return { valid: false, error: "verification_failed", message };
+    }
+  }
+
+  return { valid: true };
 }

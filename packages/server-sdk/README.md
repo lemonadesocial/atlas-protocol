@@ -68,6 +68,130 @@ For Stripe SPT, pass a `verifyStripe` callback to `verifyPayment(config, proof, 
 
 For replay protection, pass a `deps.isReplay(proof)` callback that checks your payment store; if omitted, replay protection is the host application's responsibility.
 
+## Hold lifecycle
+
+Every 402 challenge is backed by a server-side **hold** that locks the requested inventory until payment lands or the hold expires. The SDK ships an in-memory `HoldStore` for tests / single-process deployments and a `createHold` helper that enforces the protocol's 300-second minimum TTL.
+
+```ts
+import { createHold, InMemoryHoldStore } from '@atlasprotocol/server-sdk';
+
+const store = new InMemoryHoldStore();
+
+const hold = createHold({
+  eventId: 'evt_abc123',
+  ticketTypeId: 'tt_ga_001',
+  quantity: 2,
+  attendee: '0x...',
+  organizerAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00',
+  totalAmountUsdMicros: 50_000_000n,
+  idempotencyKey: req.headers['idempotency-key'],
+  ttlSeconds: 300,
+});
+await store.create(hold);
+
+// Later, when the agent submits a payment proof:
+const result = await store.consume(hold.id, idempotencyKey);
+switch (result.status) {
+  case 'consumed':         /* mint receipt + tickets */ break;
+  case 'already_consumed': /* return original receipt */ break;
+  case 'expired':          /* respond 410 hold_expired */ break;
+  case 'not_found':        /* respond 404 */ break;
+}
+
+// Periodic sweep — releases inventory back into circulation.
+await store.expireOlderThan(new Date());
+```
+
+Production hosts should implement the `HoldStore` interface against Redis (or any store that supports atomic compare-and-set) so `consume` is atomic across replicas.
+
+## Replay protection
+
+Every accepted MPP credential is fingerprinted with a SHA-256 hash of its canonical (JCS) wire bytes. The replay store rejects a second presentation of the same credential — by the same agent or any other.
+
+```ts
+import { InMemoryReplayStore, verifyMppCredential } from '@atlasprotocol/server-sdk';
+
+const replayStore = new InMemoryReplayStore({ ttlMs: 24 * 60 * 60 * 1000 });
+
+const result = await verifyMppCredential(envelope, challengeId, {
+  replayStore,
+  // Delegate the host's deeper payment verification (e.g. on-chain RPC).
+  verify: (env) => myPaymentVerifier(env),
+});
+
+if (!result.valid) {
+  switch (result.error) {
+    case 'replayed':           return res.status(409).json({ error: 'replay_rejected' });
+    case 'expired':            return res.status(410).json({ error: 'hold_expired' });
+    case 'challenge_mismatch': return res.status(422).json({ error: 'challenge_mismatch' });
+    case 'invalid_envelope':   return res.status(400).json({ error: 'bad_request' });
+    case 'verification_failed': return res.status(402).json({ error: 'payment_invalid', message: result.message });
+  }
+}
+```
+
+The replay store enforces the 24-hour idempotency window from the protocol spec (§3.6). Production hosts should back the `ReplayStore` interface with Redis using `SET … NX EX <ttl>` for atomicity.
+
+## Receipts
+
+Successful purchases produce a W3C Verifiable Credential receipt that mirrors the canonical `AtlasTicketReceipt` schema (`01-whitepaper/docs/02-SCHEMAS.md` §5 and `01-PROTOCOL-SPEC.md` §4). `generateReceipt` returns an unsigned credential — the host attaches an ES256 JWS proof block before publishing.
+
+```ts
+import { generateReceipt } from '@atlasprotocol/server-sdk';
+
+// On-chain settlement:
+const receipt = generateReceipt({
+  holdId: 'hold_xyz789',
+  eventId: 'evt_abc123',
+  attendee: '0x9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e',
+  organizerAddress: 'did:web:bjc.events',
+  paymentMethod: 'x402',
+  txHash: '0xabcdef…',
+  settlementChain: 'base',
+  amount: '50.000000',
+  currency: 'USDC',
+  ticketTypeId: 'tt_ga_001',
+  quantity: 2,
+});
+
+// Stripe SPT settlement:
+const stripeReceipt = generateReceipt({
+  /* …same fields… */
+  paymentMethod: 'stripe_spt',
+  paymentIntentId: 'pi_test_123',
+  amount: '50.00',
+  currency: 'USD',
+});
+```
+
+The returned credential includes the canonical `@context` (`https://www.w3.org/2018/credentials/v1` and `https://atlas.events/credentials/v1`) and `type: ["VerifiableCredential", "AtlasTicketReceipt"]`. Sign with ES256 using a key listed in the issuer's `signing_keys` manifest.
+
+## Approval-required events
+
+For events whose ticket type is `approval_required`, the server returns a 202 envelope instead of 402. The agent submits a join request, then receives a fresh 402 challenge once the host approves.
+
+```ts
+import { generateMppChallenge } from '@atlasprotocol/server-sdk';
+
+const { payload } = generateMppChallenge({
+  eventId: 'evt_gated',
+  holdId: 'hold_pending',
+  amountUsdcMicros: 50_000_000n,
+  organizerAddress: '0x...',
+  acceptedChains: ['base_usdc'],
+  acceptStripe: false,
+  requiresApproval: true,
+  joinRequestId: 'jr_42',
+});
+
+ctx.status = 202;
+ctx.body = payload;
+// payload.status === 'pending_approval'
+// no payment_methods, no WWW-Authenticate header
+```
+
+When the host approves, regenerate the challenge with `requiresApproval` omitted (the default), set the `WWW-Authenticate` header, and respond 402 to the agent's next purchase attempt.
+
 ## Spec reference
 
 See [`../../specs/01-PROTOCOL-SPEC.md`](../../specs/01-PROTOCOL-SPEC.md) for the full ATLAS Protocol manifest format, capability list, and signing-key requirements.
