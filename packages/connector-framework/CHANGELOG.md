@@ -2,6 +2,20 @@
 
 All notable changes to this package will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/lemonadesocial/atlas-protocol/compare/connector-framework-v0.1.2...connector-framework-v0.2.0) (2026-05-02)
+
+
+### Features
+
+* **server-sdk:** adoption polish — idempotency, rate limiting, validation ([#37](https://github.com/lemonadesocial/atlas-protocol/issues/37)) ([5820403](https://github.com/lemonadesocial/atlas-protocol/commit/5820403fec5047cd00316e0dd2b6f51573551abb))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @atlasprotocol/server-sdk bumped to 0.2.0
+
 ## [0.1.2](https://github.com/lemonadesocial/atlas-protocol/compare/connector-framework-v0.1.1...connector-framework-v0.1.2) (2026-05-01)
 
 
