@@ -54,17 +54,24 @@ function fakeEvmClient(opts: {
 }
 
 describe("SUPPORTED_PAYMENT_METHODS", () => {
-  it("exposes every multi-L2 chain plus Stripe SPT", () => {
+  it("exposes every multi-L2 chain (mainnet + testnet) plus Stripe SPT", () => {
     expect(SUPPORTED_PAYMENT_METHODS).toEqual([
       "tempo_usdc",
+      "tempo_testnet_usdc",
       "base_usdc",
       "base_sepolia_usdc",
       "arbitrum_usdc",
+      "arbitrum_sepolia_usdc",
       "polygon_usdc",
+      "polygon_amoy_usdc",
       "optimism_usdc",
+      "optimism_sepolia_usdc",
       "zksync_usdc",
+      "zksync_sepolia_usdc",
       "worldchain_usdc",
+      "worldchain_sepolia_usdc",
       "megaeth_usdm",
+      "megaeth_testnet_usdc",
       "stripe_spt",
     ]);
   });

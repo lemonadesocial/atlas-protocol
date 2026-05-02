@@ -14,6 +14,7 @@ export default tseslint.config(
       "contracts/lib/**",
       "pnpm-lock.yaml",
       "*.config.js",
+      "packages/*/scripts/**",
       "examples/nextjs-organizer/next-env.d.ts",
       "examples/nextjs-organizer/**/*.tsx",
       "examples/nextjs-organizer/next.config.js",

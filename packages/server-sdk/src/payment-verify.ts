@@ -89,14 +89,21 @@ export async function verifyPayment(
       }
 
       case "tempo_usdc":
+      case "tempo_testnet_usdc":
       case "base_usdc":
       case "base_sepolia_usdc":
       case "arbitrum_usdc":
+      case "arbitrum_sepolia_usdc":
       case "polygon_usdc":
+      case "polygon_amoy_usdc":
       case "optimism_usdc":
+      case "optimism_sepolia_usdc":
       case "zksync_usdc":
+      case "zksync_sepolia_usdc":
       case "worldchain_usdc":
-      case "megaeth_usdm": {
+      case "worldchain_sepolia_usdc":
+      case "megaeth_usdm":
+      case "megaeth_testnet_usdc": {
         if (!proof.transaction_hash) {
           return { valid: false, error: "Missing transaction_hash" };
         }

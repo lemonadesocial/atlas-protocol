@@ -1,6 +1,7 @@
 export * from "./chain-specs.js";
 export * from "./challenge.js";
 export * from "./config.js";
+export * from "./deployments.js";
 export * from "./hold.js";
 export * from "./idempotency.js";
 export * from "./manifest.js";

@@ -131,6 +131,30 @@ Each supported settlement chain has its own deploy runbook in [`contracts/deploy
 
 ---
 
+## Deployments
+
+[`deployments.json`](./deployments.json) at the repo root is the canonical registry of deployed FeeRouter contracts. It records the CREATE2 salt for the implementation contract (deterministic across chains) and the per-chain UUPS proxy addresses (per-chain by design — chain-specific init params produce per-chain digests). Every chain present in the SDK's `CHAIN_SPECS` has an entry, including testnet variants; entries are `null` until that chain has a real deployment.
+
+The SDK exposes typed accessors over this registry:
+
+```ts
+import {
+  getFeeRouterAddress,
+  getFeeRouterImplementation,
+  listDeployedChains,
+  listKnownChains,
+} from "@atlasprotocol/server-sdk";
+
+getFeeRouterAddress("base_usdc");   // → "0x..." once deployed, undefined otherwise
+getFeeRouterImplementation();       // → CREATE2 implementation address
+listDeployedChains();               // → chain slugs that have a non-null proxy
+listKnownChains();                  // → every chain slug in deployments.json
+```
+
+When adding a new chain, update `CHAIN_SPECS` and `deployments.json` together — the SDK's parity test fails if either side has an orphan key. See [`contracts/MULTICHAIN.md`](./contracts/MULTICHAIN.md) for the deploy procedure and CREATE2 derivation details.
+
+---
+
 ## Settlement Chains
 
 | Chain | Type | Tx Fee | Block Time | USDC |

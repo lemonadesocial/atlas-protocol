@@ -24,7 +24,9 @@ These three concerns are independent decisions. An operator may collapse all thr
 
 FeeRouter deploys via Nick's deterministic factory (`0x4e59b44847b379578588920cA78FbF26c0B4956C`, available at the same address on every major EVM chain) with a version-aware salt: `keccak256("atlas-protocol/FeeRouter v0.1.0")`.
 
-Result: the proxy contract has the **same address on every EVM chain**. Integrators store one address in their config, regardless of which chain they're settling on. Compute the expected address before deployment with `forge script script/Deploy.s.sol --rpc-url <rpc>` — it's logged before broadcast.
+The **implementation** contract address is deterministic across chains by construction — the salt is the same and the bytecode is the same, so the CREATE2 derivation produces the same address everywhere it deploys. The **proxy** address is per-chain by design: UUPS proxies embed chain-specific `(admin, upgrader, pauser, treasury, stablecoin)` values in their `initData`, so the proxy creation digest differs even when the salt is identical. Pinning the same multisig addresses on every chain AND bridging the deployer to the same nonce can yield matching proxy addresses, but that is an operational choice — not a protocol guarantee. See the §"CREATE2 caveat" further down for the formal derivation, and treat per-chain proxy addresses as the default expectation.
+
+Compute the expected addresses before deployment with `forge script script/Deploy.s.sol --rpc-url <rpc>` — both are logged before broadcast. The canonical registry of deployed proxy addresses is [`deployments.json`](../deployments.json) at the repo root; SDK consumers read it via `getFeeRouterAddress(chainSlug)` and `getFeeRouterImplementation()` from `@atlasprotocol/server-sdk`.
 
 ## Stablecoin-agnostic by design
 

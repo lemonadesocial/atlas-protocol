@@ -333,18 +333,32 @@ function x402RailName(type: X402PaymentMethodEntry["type"]): string {
       return "usdc-base-sepolia";
     case "optimism_usdc":
       return "usdc-optimism";
+    case "optimism_sepolia_usdc":
+      return "usdc-optimism-sepolia";
     case "arbitrum_usdc":
       return "usdc-arbitrum";
+    case "arbitrum_sepolia_usdc":
+      return "usdc-arbitrum-sepolia";
     case "polygon_usdc":
       return "usdc-polygon";
+    case "polygon_amoy_usdc":
+      return "usdc-polygon-amoy";
     case "zksync_usdc":
       return "usdc-zksync";
+    case "zksync_sepolia_usdc":
+      return "usdc-zksync-sepolia";
     case "worldchain_usdc":
       return "usdc-worldchain";
+    case "worldchain_sepolia_usdc":
+      return "usdc-worldchain-sepolia";
     case "megaeth_usdm":
       return "usdm-megaeth";
+    case "megaeth_testnet_usdc":
+      return "usdc-megaeth-testnet";
     case "tempo_usdc":
       return "usdc-tempo";
+    case "tempo_testnet_usdc":
+      return "usdc-tempo-testnet";
   }
 }
 
