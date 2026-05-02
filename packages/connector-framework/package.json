@@ -31,11 +31,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
-  "peerDependencies": {
-    "@atlasprotocol/server-sdk": "workspace:*"
+  "dependencies": {
+    "@atlasprotocol/server-sdk": "workspace:^"
   },
   "devDependencies": {
-    "@atlasprotocol/server-sdk": "workspace:*",
     "@types/node": "^24.0.0",
     "typescript": "^5.6.3",
     "vitest": "^2.0.0"

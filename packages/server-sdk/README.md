@@ -192,6 +192,70 @@ ctx.body = payload;
 
 When the host approves, regenerate the challenge with `requiresApproval` omitted (the default), set the `WWW-Authenticate` header, and respond 402 to the agent's next purchase attempt.
 
+## Idempotency
+
+Wrap any side-effecting handler with `withIdempotency` so retried requests return the original outcome rather than re-running the work. The bundled `InMemoryIdempotencyStore` is process-local (good for tests / single-process deployments); production hosts should back the `IdempotencyStore` interface with Redis (`SET ... NX EX <ttl>`) or any TTL store that supports atomic compare-and-set.
+
+```ts
+import { InMemoryIdempotencyStore, withIdempotency } from '@atlasprotocol/server-sdk';
+
+const store = new InMemoryIdempotencyStore();
+
+app.post('/atlas/v1/events/:id/purchase', async (c) => {
+  const idempotencyKey = c.req.header('Idempotency-Key') ?? defaultKey;
+  return withIdempotency(store, idempotencyKey, 24 * 60 * 60, async () => {
+    // … create hold, issue 402 challenge, etc.
+    return responseSnapshot;
+  });
+});
+```
+
+Successful results are cached for `ttlSeconds`. Errors are deliberately NOT cached — a failed handler MUST be retryable.
+
+## Rate limiting
+
+Token-bucket limiting per identifier (MPP credential `payer_id` first, IP as fallback). The `createRateLimitMiddleware` factory returns a Hono-compatible middleware that responds 429 with a `Retry-After` header on block.
+
+```ts
+import { InMemoryRateLimiter, createRateLimitMiddleware } from '@atlasprotocol/server-sdk';
+
+const purchaseLimiter = new InMemoryRateLimiter({
+  capacity: 60,
+  refillRatePerSecond: 1, // 60 req/min sustained
+});
+
+app.use(
+  '/atlas/v1/events/:id/purchase',
+  createRateLimitMiddleware({ limiter: purchaseLimiter }),
+);
+```
+
+`hono` is a peer dependency — only install it if you use `createRateLimitMiddleware`. Hosts on other frameworks can implement their own adapter against the framework-agnostic `RateLimiter` interface.
+
+## Schema validation
+
+Zod schemas mirroring `01-whitepaper/docs/02-SCHEMAS.md` and the existing TypeScript interfaces. Use the `validate*` helpers for a discriminated union you can branch on without importing Zod, or compose the raw schemas (`AtlasManifestSchema`, `AtlasEventSchema`, `AtlasTicketTypeSchema`, `AtlasReceiptSchema`) into your own pipelines.
+
+```ts
+import {
+  AtlasEventSchema,
+  validateManifest,
+  validateAtlasEvent,
+  validateReceipt,
+} from '@atlasprotocol/server-sdk';
+
+const result = validateAtlasEvent(json);
+if (!result.valid) {
+  // result.errors[i].path identifies the offending field, e.g. ["atlas:availability"]
+  return res.status(422).json({ error: 'invalid_event', details: result.errors });
+}
+
+// Or compose with your own pipeline:
+const Listing = AtlasEventSchema.extend({ /* additional checks */ });
+```
+
+The schemas use `.passthrough()` so unknown ATLAS-namespaced fields (e.g. `atlas:promoted` on search results) survive validation; required fields and enums are still strictly checked.
+
 ## Spec reference
 
 See [`../../specs/01-PROTOCOL-SPEC.md`](../../specs/01-PROTOCOL-SPEC.md) for the full ATLAS Protocol manifest format, capability list, and signing-key requirements.
