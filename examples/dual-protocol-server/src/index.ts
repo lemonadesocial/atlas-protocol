@@ -19,14 +19,18 @@
 import { serve } from "@hono/node-server";
 import { decode, deserialize, type MppPayload } from "@atlasprotocol/mpp";
 import {
+  InMemoryIdempotencyStore,
+  InMemoryRateLimiter,
+  createRateLimitMiddleware,
   defaultSupportedChainIdentifiers,
   generateAtlasManifest,
   generateMppChallenge,
   verifyPayment,
   verifyStripePayment,
+  withIdempotency,
   type AtlasPaymentMethodType,
 } from "@atlasprotocol/server-sdk";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 
 import {
   DEMO_EVENTS,
@@ -81,6 +85,23 @@ async function getStripeClient(): Promise<StripeLikeForVerifier | null> {
 }
 
 const app = new Hono();
+
+// ---------------------------------------------------------------------------
+// Adoption polish: idempotency + rate limiting on the purchase endpoint.
+// ---------------------------------------------------------------------------
+//
+// The token bucket caps each agent at 60 requests with a steady refill of 1/s
+// (matching the manifest's advertised `purchase_per_minute: 60`). Identifier
+// resolution defaults to MPP credential `payer_id` -> recipient -> client IP.
+const purchaseRateLimiter = new InMemoryRateLimiter({
+  capacity: 60,
+  refillRatePerSecond: 1,
+});
+const purchaseRateLimit = createRateLimitMiddleware({ limiter: purchaseRateLimiter });
+
+// 24h TTL matches the protocol's idempotency window (01-PROTOCOL-SPEC.md §3.6).
+const purchaseIdempotency = new InMemoryIdempotencyStore();
+const PURCHASE_IDEMPOTENCY_TTL_SECONDS = 24 * 60 * 60;
 
 // ---------------------------------------------------------------------------
 // 1. /.well-known/atlas.json
@@ -146,7 +167,13 @@ app.get("/atlas/v1/events/:id", (c) => {
 // ---------------------------------------------------------------------------
 // 4. POST /atlas/v1/events/:id/purchase
 // ---------------------------------------------------------------------------
-app.post("/atlas/v1/events/:id/purchase", async (c) => {
+//
+// Rate limit and idempotency wrap this endpoint. Order: rate-limit middleware
+// runs before the handler so abusive callers are rejected without ever
+// reserving a hold. Inside the handler, `withIdempotency` caches the final
+// response payload by `Idempotency-Key` (or a deterministic fallback derived
+// from event + ticket + payer) so a retried request returns the same bytes.
+app.post("/atlas/v1/events/:id/purchase", purchaseRateLimit, async (c) => {
   const id = c.req.param("id");
   const event = findEvent(id);
   if (!event) return c.json({ error: "event_not_found" }, 404);
@@ -168,6 +195,64 @@ app.post("/atlas/v1/events/:id/purchase", async (c) => {
 
   const idempotencyKey = c.req.header("Idempotency-Key");
   const amountUsdMicros = ticket.priceUsdMicros * BigInt(quantity);
+
+  // Resolve the idempotency cache key: prefer the agent-supplied header, fall
+  // back to a deterministic fingerprint of the request shape so naive retries
+  // still hit the cache.
+  const auth = c.req.header("Authorization");
+  const payerHint = auth?.startsWith("MPP ") ? auth.slice(4, 32) : "anon";
+  const idempotencyCacheKey = `purchase:${event.id}:${ticket.id}:${quantity}:${
+    idempotencyKey ?? payerHint
+  }`;
+
+  const snapshot = await withIdempotency<ResponseSnapshot>(
+    purchaseIdempotency,
+    idempotencyCacheKey,
+    PURCHASE_IDEMPOTENCY_TTL_SECONDS,
+    async () => {
+      const response = await handlePurchase(c, {
+        event,
+        ticket,
+        quantity,
+        amountUsdMicros,
+        idempotencyKey,
+      });
+      return snapshotResponse(response);
+    },
+  );
+  return rebuildResponse(snapshot);
+});
+
+interface PurchaseHandlerInput {
+  event: DemoEvent;
+  ticket: DemoEvent["ticketTypes"][number];
+  quantity: number;
+  amountUsdMicros: bigint;
+  idempotencyKey?: string | undefined;
+}
+
+interface ResponseSnapshot {
+  status: number;
+  headers: [string, string][];
+  body: string;
+}
+
+async function snapshotResponse(response: Response): Promise<ResponseSnapshot> {
+  const body = await response.text();
+  const headers: [string, string][] = [];
+  response.headers.forEach((value, key) => headers.push([key, value]));
+  return { status: response.status, headers, body };
+}
+
+function rebuildResponse(snapshot: ResponseSnapshot): Response {
+  return new Response(snapshot.body, {
+    status: snapshot.status,
+    headers: snapshot.headers,
+  });
+}
+
+async function handlePurchase(c: Context, input: PurchaseHandlerInput): Promise<Response> {
+  const { event, ticket, quantity, amountUsdMicros, idempotencyKey } = input;
   const hold = lookupOrCreateHold({
     eventId: event.id,
     ticketTypeId: ticket.id,
@@ -276,7 +361,7 @@ app.post("/atlas/v1/events/:id/purchase", async (c) => {
       ...challenge.payload,
     }),
   );
-});
+}
 
 // ---------------------------------------------------------------------------
 // helpers

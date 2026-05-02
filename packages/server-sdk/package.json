@@ -35,18 +35,24 @@
   },
   "dependencies": {
     "@atlasprotocol/mpp": "workspace:^",
-    "viem": "^2.21.0"
+    "viem": "^2.21.0",
+    "zod": "^3.23.0"
   },
   "peerDependencies": {
+    "hono": ">=4.0.0",
     "stripe": ">=14.0.0"
   },
   "peerDependenciesMeta": {
+    "hono": {
+      "optional": true
+    },
     "stripe": {
       "optional": true
     }
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "hono": "^4.6.0",
     "typescript": "^5.6.3",
     "vitest": "^2.0.0"
   }
