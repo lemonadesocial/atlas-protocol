@@ -2,6 +2,14 @@
 
 All notable changes to `@atlasprotocol/mpp` are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this package adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/lemonadesocial/atlas-protocol/compare/mpp-v0.1.1...mpp-v0.2.0) (2026-05-01)
+
+
+### Features
+
+* **mpp:** add Stripe MPP client subpath for SPT-based payments ([#28](https://github.com/lemonadesocial/atlas-protocol/issues/28)) ([ca39281](https://github.com/lemonadesocial/atlas-protocol/commit/ca39281975dd4d1fe139e372be812012090398b3))
+* **mpp:** add x402 client helper for agent-side payment handling ([#24](https://github.com/lemonadesocial/atlas-protocol/issues/24)) ([7108486](https://github.com/lemonadesocial/atlas-protocol/commit/7108486f0fc77be8166289e9377530f5fae7cd76))
+
 ## [0.1.1](https://github.com/lemonadesocial/atlas-protocol/compare/mpp-v0.1.0...mpp-v0.1.1) (2026-04-30)
 
 

@@ -5,6 +5,20 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this package adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/lemonadesocial/atlas-protocol/compare/agent-tools-v0.1.1...agent-tools-v0.2.0) (2026-05-01)
+
+
+### Features
+
+* **agent-tools:** dual-protocol routing in atlas_purchase MCP tool ([#29](https://github.com/lemonadesocial/atlas-protocol/issues/29)) ([1374eca](https://github.com/lemonadesocial/atlas-protocol/commit/1374ecaca31d01a691240d15d0571a90dc2dcc08))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @atlasprotocol/mpp bumped to 0.2.0
+
 ## [0.1.1](https://github.com/lemonadesocial/atlas-protocol/compare/agent-tools-v0.1.0...agent-tools-v0.1.1) (2026-04-30)
 
 
