@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.6.0](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.5.0...server-sdk-v0.6.0) (2026-05-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **contracts,server-sdk:** FeeRouter.settle now accepts a FeeSplit[] array of stacked platform fees and emits richer PaymentSettled. New reverseSettle function and REFUND_ROLE for refund flow. Protocol fee default lowered from 2% to 0.5%. Caps added: MAX_TOTAL_PLATFORM_FEES_BPS=2000 (20%), MIN_ORGANIZER_BPS=7000 (70%). server-sdk: buildSettleTx signature change, new buildReverseSettleTx helper. ATLAS pre-production; no contracts deployed; safe to break ABI.
+
+### Features
+
+* **contracts,server-sdk:** atlasTicket v2 — multi-chain, burn, custodial pattern ([#55](https://github.com/lemonadesocial/atlas-protocol/issues/55)) ([e2d3115](https://github.com/lemonadesocial/atlas-protocol/commit/e2d311579f5ec4d5854926390af0a4666832da65))
+* **contracts,server-sdk:** feeRouter v2 — stacked fees, refund, 0.5% protocol fee ([#54](https://github.com/lemonadesocial/atlas-protocol/issues/54)) ([555fee0](https://github.com/lemonadesocial/atlas-protocol/commit/555fee05264ecc941cb627c3333956b315ac527e))
+* **contracts,server-sdk:** rewardLedger v2 — refund/reverse rewards ([#56](https://github.com/lemonadesocial/atlas-protocol/issues/56)) ([41e8ac2](https://github.com/lemonadesocial/atlas-protocol/commit/41e8ac257fbe55976f81dfe680d240d1df6a80bf))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @atlasprotocol/types bumped to 0.2.0
+
 ## [0.5.0](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.4.0...server-sdk-v0.5.0) (2026-05-03)
 
 
