@@ -115,6 +115,27 @@ export const REWARD_LEDGER_ABI = [
     outputs: [],
   },
   {
+    type: "function",
+    name: "reverseRewards",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "paymentId", type: "bytes32" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "isReversed",
+    stateMutability: "view",
+    inputs: [{ name: "paymentId", type: "bytes32" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "REVERSER_ROLE",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
+  {
     type: "event",
     name: "RewardRecorded",
     inputs: [
@@ -143,6 +164,26 @@ export const REWARD_LEDGER_ABI = [
       { name: "amount", type: "uint256", indexed: false },
     ],
     anonymous: false,
+  },
+  {
+    type: "event",
+    name: "RewardsReversed",
+    inputs: [
+      { name: "paymentId", type: "bytes32", indexed: true },
+      { name: "totalReversed", type: "uint256", indexed: false },
+    ],
+    anonymous: false,
+  },
+  // Custom errors — surfaced in revert payloads so SDK consumers can decode them.
+  {
+    type: "error",
+    name: "RewardsNotRecorded",
+    inputs: [{ name: "paymentId", type: "bytes32" }],
+  },
+  {
+    type: "error",
+    name: "RewardsAlreadyReversed",
+    inputs: [{ name: "paymentId", type: "bytes32" }],
   },
 ] as const;
 
@@ -235,6 +276,31 @@ export function buildFundTx(opts: BuildFundTxOpts): RewardLedgerTx {
     abi: REWARD_LEDGER_ABI,
     functionName: "fund",
     args: [opts.amount],
+  });
+  return { to: opts.contract, data, value: 0n };
+}
+
+/** Inputs to {@link buildReverseRewardsTx}. */
+export interface BuildReverseRewardsTxOpts {
+  /** RewardLedger proxy address on the target chain. */
+  contract: `0x${string}`;
+  /** Off-chain payment identifier whose reward entries to reverse. */
+  paymentId: `0x${string}`;
+}
+
+/**
+ * Build the calldata for `RewardLedger.reverseRewards(paymentId)`. Used when
+ * the underlying FeeRouter payment is refunded — every reward entry recorded
+ * under `paymentId` is subtracted from the corresponding recipient's accrued
+ * balance. Caller must hold REVERSER_ROLE.
+ *
+ * `value` is always `0n` because `reverseRewards` is non-payable.
+ */
+export function buildReverseRewardsTx(opts: BuildReverseRewardsTxOpts): RewardLedgerTx {
+  const data = encodeFunctionData({
+    abi: REWARD_LEDGER_ABI,
+    functionName: "reverseRewards",
+    args: [opts.paymentId],
   });
   return { to: opts.contract, data, value: 0n };
 }
@@ -354,6 +420,37 @@ export function parseFundedEvent(log: {
     if (decoded.eventName !== "Funded") return null;
     const { from, amount } = decoded.args;
     return { from, amount };
+  } catch {
+    return null;
+  }
+}
+
+/** Decoded `RewardsReversed` event payload. */
+export interface DecodedRewardsReversedEvent {
+  paymentId: `0x${string}`;
+  totalReversed: bigint;
+}
+
+/**
+ * Decode a `RewardsReversed` log from a transaction receipt. Returns `null`
+ * if the log does not match the RewardLedger `RewardsReversed` event
+ * signature.
+ */
+export function parseRewardsReversedEvent(log: {
+  topics: readonly `0x${string}`[];
+  data: `0x${string}`;
+}): DecodedRewardsReversedEvent | null {
+  try {
+    const decoded = decodeEventLog({
+      abi: REWARD_LEDGER_ABI,
+      eventName: "RewardsReversed",
+      topics: log.topics as [signature: `0x${string}`, ...args: `0x${string}`[]],
+      data: log.data,
+      strict: true,
+    });
+    if (decoded.eventName !== "RewardsReversed") return null;
+    const { paymentId, totalReversed } = decoded.args;
+    return { paymentId, totalReversed };
   } catch {
     return null;
   }

@@ -92,6 +92,37 @@ Compute the expected addresses with `forge script script/DeployRewardLedger.s.so
 `getRewardLedgerAddress(chainSlug)` and `getRewardLedgerImplementation()` from
 `@atlasprotocol/server-sdk`.
 
+#### Canonical-chain only — v1 deployment scope
+
+Unlike FeeRouter and AtlasTicket, **RewardLedger v1 is deliberately canonical-chain only**: the
+proxy slots in [`deployments.json`](../deployments.json) cover Base mainnet (`base_usdc`) and
+Base Sepolia (`base_sepolia_usdc`) — and nothing else. The contract bytecode is portable across
+every EVM chain in `chain-specs.ts`, but the v1 protocol economics keep reward accrual on a
+single chain so referral, organizer, and attendee balances accumulate against one ledger
+without cross-chain reconciliation. SDK consumers asking for `getRewardLedgerAddress("optimism_usdc")`
+(or any non-canonical slug) receive `undefined` — operators who need rewards on another chain
+must wait for the multi-chain RewardLedger described in
+[`01-whitepaper/docs/10-PROGRESSIVE-DECENTRALIZATION.md`](../01-whitepaper/docs/10-PROGRESSIVE-DECENTRALIZATION.md)
+(Phase 7+).
+
+#### v2 — refund flow
+
+`RewardLedger` v2 introduces a reversal path that mirrors `FeeRouter.reverseSettle`:
+
+- **`REVERSER_ROLE`** — granted post-deploy to the ATLAS-managed settlement service that drives
+  refunds. The deploy script does NOT pre-grant this role; the admin runs
+  `grantRole(REVERSER_ROLE, settlementService)` once the operator has identified the reverser
+  wallet for that chain.
+- **`reverseRewards(paymentId)`** — pause-gated, idempotent per `paymentId`. Walks every reward
+  entry recorded under the payment and subtracts each from the corresponding recipient's
+  accrued balance, emitting `RewardsReversed(paymentId, totalReversed)` for off-chain
+  correlation with the FeeRouter refund. Solidity 0.8 checked subtraction reverts if any
+  recipient has already claimed — that case must be cleaned up off-chain.
+
+ATLAS contracts are pre-production; no proxies are deployed yet, so the v2 storage change is
+non-breaking on-chain. SDK consumers updating to the v2 helpers gain `buildReverseRewardsTx`
+and `parseRewardsReversedEvent`.
+
 ## Stablecoin-agnostic by design
 
 FeeRouter's `initialize()` accepts an ERC-20 token address — it is not hardcoded to USDC or any specific stablecoin. Each chain's deployment passes the appropriate stablecoin for that chain's operator.

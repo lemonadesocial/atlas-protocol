@@ -74,10 +74,12 @@ describe("deployments", () => {
     expect(known).toContain("tempo_testnet_usdc");
   });
 
+  // feeRouter and atlasTicket are EVM-portable: their proxies map mirrors every chain in
+  // CHAIN_SPECS. rewardLedger v1 is canonical-chain only (Base + Base Sepolia) — multi-chain
+  // RewardLedger is Phase 7+ per the progressive-decentralization spec.
   describe.each([
     { contract: "feeRouter" as const, expectedSalt: "atlas-protocol/FeeRouter v0.1.0" },
     { contract: "atlasTicket" as const, expectedSalt: "atlas-protocol/AtlasTicket v0.1.0" },
-    { contract: "rewardLedger" as const, expectedSalt: "atlas-protocol/RewardLedger v0.1.0" },
   ])("$contract.proxies parity with CHAIN_SPECS", ({ contract, expectedSalt }) => {
     it(`${contract}.proxies keys match Object.keys(CHAIN_SPECS) exactly`, () => {
       const proxies = getDeploymentsRegistry()[contract].proxies;
@@ -96,6 +98,19 @@ describe("deployments", () => {
     it(`${contract}.implementation.deployer_salt is the version-pinned literal`, () => {
       const impl = getDeploymentsRegistry()[contract].implementation;
       expect(impl.deployer_salt).toBe(expectedSalt);
+    });
+  });
+
+  describe("rewardLedger.proxies — canonical-chain only (v1)", () => {
+    it("rewardLedger.proxies has exactly two slots: base_usdc and base_sepolia_usdc", () => {
+      const proxies = getDeploymentsRegistry().rewardLedger.proxies;
+      const keys = Object.keys(proxies).sort();
+      expect(keys).toEqual(["base_sepolia_usdc", "base_usdc"]);
+    });
+
+    it("rewardLedger.implementation.deployer_salt is the version-pinned literal", () => {
+      const impl = getDeploymentsRegistry().rewardLedger.implementation;
+      expect(impl.deployer_salt).toBe("atlas-protocol/RewardLedger v0.1.0");
     });
   });
 
@@ -250,10 +265,18 @@ describe("deployments", () => {
   });
 
   describe("rewardLedger", () => {
-    it("getRewardLedgerAddress returns undefined for chains with null proxy", () => {
+    it("getRewardLedgerAddress returns undefined for the canonical chains with null proxy", () => {
       expect(getRewardLedgerAddress("base_usdc")).toBeUndefined();
       expect(getRewardLedgerAddress("base_sepolia_usdc")).toBeUndefined();
+    });
+
+    it("getRewardLedgerAddress returns undefined for non-canonical chain slugs", () => {
+      // RewardLedger v1 ships canonical-chain only (Base + Base Sepolia). Slugs that
+      // appear in CHAIN_SPECS but are not in rewardLedger.proxies must read undefined,
+      // not throw.
       expect(getRewardLedgerAddress("optimism_sepolia_usdc")).toBeUndefined();
+      expect(getRewardLedgerAddress("arbitrum_usdc")).toBeUndefined();
+      expect(getRewardLedgerAddress("polygon_usdc")).toBeUndefined();
     });
 
     it("getRewardLedgerAddress returns undefined for unknown chain slugs", () => {
@@ -297,7 +320,7 @@ describe("deployments", () => {
             ...original.rewardLedger,
             proxies: {
               ...original.rewardLedger.proxies,
-              arbitrum_sepolia_usdc: "0x3333333333333333333333333333333333333333",
+              base_sepolia_usdc: "0x3333333333333333333333333333333333333333",
             },
           },
         };
@@ -305,7 +328,7 @@ describe("deployments", () => {
 
         __resetDeploymentsCacheForTests();
 
-        expect(getRewardLedgerAddress("arbitrum_sepolia_usdc")).toBe(
+        expect(getRewardLedgerAddress("base_sepolia_usdc")).toBe(
           "0x3333333333333333333333333333333333333333",
         );
       });

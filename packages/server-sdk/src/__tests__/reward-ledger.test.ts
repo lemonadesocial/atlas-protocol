@@ -1,4 +1,5 @@
 import {
+  decodeFunctionData,
   encodeAbiParameters,
   encodeEventTopics,
   encodeFunctionData,
@@ -13,10 +14,12 @@ import {
   buildClaimTx,
   buildFundTx,
   buildRecordRewardTx,
+  buildReverseRewardsTx,
   getRewardLedgerContractAddress,
   parseClaimedEvent,
   parseFundedEvent,
   parseRewardRecordedEvent,
+  parseRewardsReversedEvent,
   REWARD_LEDGER_ABI,
   RewardKind,
 } from "../reward-ledger.js";
@@ -109,6 +112,27 @@ describe("buildFundTx", () => {
   });
 });
 
+describe("buildReverseRewardsTx", () => {
+  it("encodes reverseRewards(paymentId) to the expected calldata", () => {
+    const tx = buildReverseRewardsTx({ contract: CONTRACT, paymentId: PAYMENT_ID });
+    const expected = encodeFunctionData({
+      abi: REWARD_LEDGER_ABI,
+      functionName: "reverseRewards",
+      args: [PAYMENT_ID],
+    });
+    expect(tx.data).toBe(expected);
+    expect(tx.to).toBe(CONTRACT);
+    expect(tx.value).toBe(0n);
+  });
+
+  it("calldata round-trips through decodeFunctionData", () => {
+    const tx = buildReverseRewardsTx({ contract: CONTRACT, paymentId: PAYMENT_ID });
+    const decoded = decodeFunctionData({ abi: REWARD_LEDGER_ABI, data: tx.data });
+    expect(decoded.functionName).toBe("reverseRewards");
+    expect(decoded.args).toEqual([PAYMENT_ID]);
+  });
+});
+
 describe("parseRewardRecordedEvent", () => {
   it("decodes a synthetic log including the enum kind", () => {
     const topics = encodeEventTopics({
@@ -194,6 +218,37 @@ describe("parseFundedEvent", () => {
         data: "0x",
       }),
     ).toBeNull();
+  });
+});
+
+describe("parseRewardsReversedEvent", () => {
+  it("decodes a synthetic log including the totalReversed amount", () => {
+    const topics = encodeEventTopics({
+      abi: REWARD_LEDGER_ABI,
+      eventName: "RewardsReversed",
+      args: { paymentId: PAYMENT_ID },
+    });
+    const data = encodeAbiParameters([{ name: "totalReversed", type: "uint256" }], [AMOUNT]);
+
+    const decoded = parseRewardsReversedEvent({ topics, data });
+    expect(decoded).not.toBeNull();
+    expect(decoded!.paymentId).toBe(PAYMENT_ID);
+    expect(decoded!.totalReversed).toBe(AMOUNT);
+  });
+
+  it("returns null for unrelated logs", () => {
+    const transferTopic =
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef" as const;
+    expect(
+      parseRewardsReversedEvent({
+        topics: [transferTopic, pad(RECIPIENT, { size: 32 })],
+        data: "0x",
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null for logs with no topics", () => {
+    expect(parseRewardsReversedEvent({ topics: [], data: "0x" })).toBeNull();
   });
 });
 
