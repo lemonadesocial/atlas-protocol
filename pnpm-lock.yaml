@@ -265,6 +265,9 @@ importers:
       '@atlasprotocol/server-sdk':
         specifier: workspace:^
         version: link:../server-sdk
+      '@atlasprotocol/types':
+        specifier: workspace:^
+        version: link:../types
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -278,13 +281,13 @@ importers:
 
   packages/ipfs:
     dependencies:
+      '@atlasprotocol/types':
+        specifier: workspace:^
+        version: link:../types
       multiformats:
         specifier: ^13.3.0
         version: 13.4.2
     devDependencies:
-      '@atlasprotocol/server-sdk':
-        specifier: workspace:*
-        version: link:../server-sdk
       '@types/node':
         specifier: ^24.0.0
         version: 24.12.2
@@ -319,6 +322,9 @@ importers:
       '@atlasprotocol/mpp':
         specifier: workspace:^
         version: link:../mpp
+      '@atlasprotocol/types':
+        specifier: workspace:^
+        version: link:../types
       stripe:
         specifier: '>=14.0.0'
         version: 22.1.0(@types/node@24.12.2)

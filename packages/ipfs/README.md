@@ -10,16 +10,16 @@ This package provides two things:
 ## Install
 
 ```bash
-pnpm add @atlasprotocol/ipfs @atlasprotocol/server-sdk
+pnpm add @atlasprotocol/ipfs
 ```
 
-`@atlasprotocol/server-sdk` is a peer dependency — `generateEventCid` accepts `AtlasEvent` from there.
+`generateEventCid` accepts an `AtlasEvent` from `@atlasprotocol/types`. That package is pulled in transitively through `@atlasprotocol/ipfs` — install it explicitly only if you import the type yourself.
 
 ## Quickstart — deterministic CID for an AtlasEvent
 
 ```ts
 import { generateEventCid } from '@atlasprotocol/ipfs';
-import type { AtlasEvent } from '@atlasprotocol/server-sdk';
+import type { AtlasEvent } from '@atlasprotocol/types';
 
 const event: AtlasEvent = /* ... your AtlasEvent ... */;
 const cid = await generateEventCid(event);

@@ -32,13 +32,10 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@atlasprotocol/types": "workspace:^",
     "multiformats": "^13.3.0"
   },
-  "peerDependencies": {
-    "@atlasprotocol/server-sdk": "workspace:*"
-  },
   "devDependencies": {
-    "@atlasprotocol/server-sdk": "workspace:*",
     "@types/node": "^24.0.0",
     "typescript": "^5.6.3",
     "vitest": "^2.0.0"

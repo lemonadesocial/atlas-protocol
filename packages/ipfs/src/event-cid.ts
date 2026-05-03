@@ -1,4 +1,4 @@
-import type { AtlasEvent } from "@atlasprotocol/server-sdk";
+import type { AtlasEvent } from "@atlasprotocol/types";
 
 import { canonicalize } from "./canonicalize.js";
 import { generateCid } from "./cid.js";

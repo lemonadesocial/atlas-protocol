@@ -1,5 +1,5 @@
 import { canonicalize } from "../canonicalize.js";
-import type { FetchLike, PinOptions, PinResult, Pinner } from "./pinner.js";
+import type { FetchLike, PinOptions, PinResult, Pinner } from "@atlasprotocol/types";
 
 export interface Web3StoragePinnerConfig {
   apiToken: string;

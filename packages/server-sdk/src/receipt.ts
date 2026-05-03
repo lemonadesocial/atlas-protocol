@@ -6,30 +6,27 @@
  * VC `type` value `AtlasTicketReceipt`. This module produces an unsigned
  * credential — signing is left to the host (an ES256 JWS proof block can be
  * attached after issuance).
+ *
+ * The credential shape itself (`AtlasReceipt` and friends) is defined in
+ * `@atlasprotocol/types`; this module re-exports those shapes for back-compat
+ * and provides the runtime builder + JSON-LD context constants.
  */
 
-/**
- * Mirrors `@atlasprotocol/ipfs`'s `Pinner` interface — keep aligned. The
- * shape is duplicated here (rather than imported) so server-sdk does not
- * declare a workspace link to `@atlasprotocol/ipfs`; ipfs already imports
- * `AtlasEvent` from server-sdk, and a reverse link forms a cycle that
- * release-please's NodeWorkspace plugin cannot resolve. TypeScript is
- * structural — any concrete `Pinner` instance from `@atlasprotocol/ipfs`
- * satisfies this shape, so callers wire up auto-pinning by `pnpm add
- * @atlasprotocol/ipfs` themselves and passing the pinner instance.
- */
-interface Pinner {
-  pinJson(
-    obj: unknown,
-    opts?: { name?: string; metadata?: Record<string, string> },
-  ): Promise<{ cid: string; size: number }>;
-  pinBytes(
-    content: Uint8Array,
-    opts?: { name?: string; metadata?: Record<string, string> },
-  ): Promise<{ cid: string; size: number }>;
-  unpin(cid: string): Promise<void>;
-  isPinned(cid: string): Promise<boolean>;
-}
+import type {
+  AtlasReceipt,
+  AtlasReceiptCredentialSubject,
+  AtlasReceiptSettlement,
+  Pinner,
+  ReceiptPaymentMethod,
+} from "@atlasprotocol/types";
+
+export type {
+  AtlasReceipt,
+  AtlasReceiptCredentialSubject,
+  AtlasReceiptProof,
+  AtlasReceiptSettlement,
+  ReceiptPaymentMethod,
+} from "@atlasprotocol/types";
 
 /** W3C VC v1 JSON-LD context. Stable, registered, public. */
 export const W3C_VC_V1_CONTEXT = "https://www.w3.org/2018/credentials/v1" as const;
@@ -47,9 +44,6 @@ export const ATLAS_RECEIPT_TYPES = [
   "VerifiableCredential",
   "AtlasTicketReceipt",
 ] as const satisfies readonly [string, string];
-
-/** Receipt rail discriminator — picks which settlement field is populated. */
-export type ReceiptPaymentMethod = "x402" | "stripe_spt";
 
 export interface GenerateReceiptOpts {
   /** Hold id this receipt redeems. Echoed into `credentialSubject` for audit. */
@@ -105,7 +99,8 @@ export interface GenerateReceiptOpts {
    * Optional pinner. When provided, the receipt is canonicalized and pinned
    * to IPFS in the same call; the returned CID is included in the result.
    * Use any `@atlasprotocol/ipfs` `Pinner` (Pinata, Web3.Storage, Filebase,
-   * or self-hosted Kubo).
+   * or self-hosted Kubo) — its `Pinner` interface comes from
+   * `@atlasprotocol/types`, which both packages share.
    */
   pinner?: Pinner;
 }
@@ -115,60 +110,6 @@ export interface GenerateReceiptResult {
   receipt: AtlasReceipt;
   /** CID of the pinned receipt JSON. Present iff a pinner was supplied. */
   cid?: string;
-}
-
-/** Settlement details embedded in `credentialSubject`. */
-export interface AtlasReceiptSettlement {
-  /** Always present for x402; omitted for Stripe. */
-  tx_hash?: string;
-  /** Always present for x402; omitted for Stripe. */
-  chain?: string;
-  /** Always present for Stripe; omitted for x402. */
-  payment_intent_id?: string;
-  /** Echoed amount (decimal string). */
-  amount: string;
-  /** Echoed currency. */
-  currency: string;
-  /** Settlement rail. */
-  method: ReceiptPaymentMethod;
-}
-
-export interface AtlasReceiptCredentialSubject {
-  /** Holder identifier (wallet, DID, or other URI). */
-  id: string;
-  event_id: string;
-  hold_id: string;
-  ticket_type?: string;
-  quantity?: number;
-  settlement: AtlasReceiptSettlement;
-}
-
-/**
- * The W3C VC representation of an ATLAS ticket receipt. The `proof` field is
- * intentionally optional — `generateReceipt` returns an unsigned credential
- * that the host signs separately (ES256 over the credential body).
- */
-export interface AtlasReceipt {
-  "@context": readonly string[];
-  type: readonly string[];
-  /** Optional credential URI (e.g. `urn:atlas:receipt:rec_abc123`). */
-  id?: string;
-  issuer: string;
-  issuanceDate: string;
-  credentialSubject: AtlasReceiptCredentialSubject;
-  /**
-   * Reserved for the ES256 JWS proof block. Left undefined by
-   * `generateReceipt` — the host application attaches it after signing.
-   */
-  proof?: AtlasReceiptProof;
-}
-
-export interface AtlasReceiptProof {
-  type: string;
-  created: string;
-  verificationMethod: string;
-  proofPurpose: string;
-  jws: string;
 }
 
 /**

@@ -32,7 +32,8 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@atlasprotocol/server-sdk": "workspace:^"
+    "@atlasprotocol/server-sdk": "workspace:^",
+    "@atlasprotocol/types": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
