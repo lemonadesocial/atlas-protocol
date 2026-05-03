@@ -1,6 +1,7 @@
 {
   "files": [],
   "references": [
+    { "path": "./packages/types" },
     { "path": "./packages/server-sdk" },
     { "path": "./packages/agent-tools" },
     { "path": "./packages/mpp" },
