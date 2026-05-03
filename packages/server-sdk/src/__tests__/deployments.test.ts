@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CHAIN_SPECS } from "../chain-specs.js";
 import {
   __resetDeploymentsCacheForTests,
+  getAtlasTicketAddress,
+  getAtlasTicketImplementation,
   getDeploymentsRegistry,
   getFeeRouterAddress,
   getFeeRouterImplementation,
@@ -70,18 +72,24 @@ describe("deployments", () => {
     expect(known).toContain("tempo_testnet_usdc");
   });
 
-  it("parity: deployments.json proxies keys match Object.keys(CHAIN_SPECS) exactly", () => {
-    const knownChains = new Set(listKnownChains());
-    const specChains = new Set(Object.keys(CHAIN_SPECS));
+  describe.each([{ contract: "feeRouter" as const }, { contract: "atlasTicket" as const }])(
+    "$contract.proxies parity with CHAIN_SPECS",
+    ({ contract }) => {
+      it(`${contract}.proxies keys match Object.keys(CHAIN_SPECS) exactly`, () => {
+        const proxies = getDeploymentsRegistry()[contract].proxies;
+        const declaredChains = new Set(Object.keys(proxies));
+        const specChains = new Set(Object.keys(CHAIN_SPECS));
 
-    expect(knownChains.size).toBe(specChains.size);
+        expect(declaredChains.size).toBe(specChains.size);
 
-    const inDeploymentsButNotSpecs = [...knownChains].filter((s) => !specChains.has(s));
-    const inSpecsButNotDeployments = [...specChains].filter((s) => !knownChains.has(s));
+        const inDeploymentsButNotSpecs = [...declaredChains].filter((s) => !specChains.has(s));
+        const inSpecsButNotDeployments = [...specChains].filter((s) => !declaredChains.has(s));
 
-    expect(inDeploymentsButNotSpecs).toEqual([]);
-    expect(inSpecsButNotDeployments).toEqual([]);
-  });
+        expect(inDeploymentsButNotSpecs).toEqual([]);
+        expect(inSpecsButNotDeployments).toEqual([]);
+      });
+    },
+  );
 
   describe("with patched deployments.json on disk", () => {
     let backupPath: string;
@@ -144,6 +152,92 @@ describe("deployments", () => {
       __resetDeploymentsCacheForTests();
 
       expect(getFeeRouterImplementation()).toBe("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef");
+    });
+  });
+
+  describe("atlasTicket", () => {
+    it("getAtlasTicketAddress returns undefined for chains with null proxy", () => {
+      expect(getAtlasTicketAddress("base_usdc")).toBeUndefined();
+      expect(getAtlasTicketAddress("base_sepolia_usdc")).toBeUndefined();
+      expect(getAtlasTicketAddress("optimism_sepolia_usdc")).toBeUndefined();
+    });
+
+    it("getAtlasTicketAddress returns undefined for unknown chain slugs", () => {
+      expect(getAtlasTicketAddress("not_a_real_chain")).toBeUndefined();
+    });
+
+    it("getAtlasTicketImplementation returns undefined initially", () => {
+      expect(getAtlasTicketImplementation()).toBeUndefined();
+    });
+
+    it("getDeploymentsRegistry exposes the AtlasTicket deployer salt", () => {
+      const registry = getDeploymentsRegistry();
+      expect(registry.atlasTicket.implementation.deployer_salt).toBe(
+        "atlas-protocol/AtlasTicket v0.1.0",
+      );
+    });
+
+    describe("with patched deployments.json on disk", () => {
+      let backupPath: string;
+
+      beforeEach(() => {
+        backupPath = join(
+          tmpdir(),
+          `atlas-deployments-backup-ticket-${Date.now()}-${Math.random().toString(36).slice(2)}.json`,
+        );
+        copyFileSync(REPO_ROOT_PATH, backupPath);
+      });
+
+      afterEach(() => {
+        copyFileSync(backupPath, REPO_ROOT_PATH);
+        __resetDeploymentsCacheForTests();
+      });
+
+      it("getAtlasTicketAddress returns the patched proxy after re-reading the file", () => {
+        const original = JSON.parse(readFileSync(REPO_ROOT_PATH, "utf8")) as {
+          atlasTicket: { proxies: Record<string, string | null> };
+        };
+        const patched = {
+          ...original,
+          atlasTicket: {
+            ...original.atlasTicket,
+            proxies: {
+              ...original.atlasTicket.proxies,
+              optimism_sepolia_usdc: "0x2222222222222222222222222222222222222222",
+            },
+          },
+        };
+        writeFileSync(REPO_ROOT_PATH, JSON.stringify(patched, null, 2) + "\n", "utf8");
+
+        __resetDeploymentsCacheForTests();
+
+        expect(getAtlasTicketAddress("optimism_sepolia_usdc")).toBe(
+          "0x2222222222222222222222222222222222222222",
+        );
+      });
+
+      it("getAtlasTicketImplementation returns the patched address after re-reading", () => {
+        const original = JSON.parse(readFileSync(REPO_ROOT_PATH, "utf8")) as {
+          atlasTicket: {
+            implementation: { create2_address: string | null; deployer_salt: string };
+          };
+        };
+        const patched = {
+          ...original,
+          atlasTicket: {
+            ...original.atlasTicket,
+            implementation: {
+              ...original.atlasTicket.implementation,
+              create2_address: "0xfeedfacefeedfacefeedfacefeedfacefeedface",
+            },
+          },
+        };
+        writeFileSync(REPO_ROOT_PATH, JSON.stringify(patched, null, 2) + "\n", "utf8");
+
+        __resetDeploymentsCacheForTests();
+
+        expect(getAtlasTicketImplementation()).toBe("0xfeedfacefeedfacefeedfacefeedfacefeedface");
+      });
     });
   });
 });

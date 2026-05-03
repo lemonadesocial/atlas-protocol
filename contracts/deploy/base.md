@@ -1,4 +1,4 @@
-# Base mainnet — FeeRouter deploy runbook
+# Base mainnet — FeeRouter + AtlasTicket deploy runbook
 
 | Field | Value |
 |-------|-------|
@@ -68,13 +68,54 @@ forge verify-contract \
 - Add the chain entry to the registry index when the registry service ships.
 - Confirm `pause` / `setFeeSchedule` smoke tests from the operations multisig.
 
-## 5. Deployed addresses (record after deploy)
+## 5. AtlasTicket deploy
+
+AtlasTicket has no stablecoin parameter — it only needs role recipients and a (name, symbol)
+pair. The same `ADMIN` / `PAUSER` multisigs from FeeRouter are reused; `MINTER` is the operations
+service that calls `mint(...)` after a successful settlement; `UPGRADER` matches FeeRouter's
+upgrade authority.
+
+```bash
+export ADMIN=0x...        # DEFAULT_ADMIN_ROLE (governance multisig — same as FeeRouter)
+export MINTER=0x...       # MINTER_ROLE (operations service / settlement worker)
+export PAUSER=0x...       # PAUSER_ROLE (operations multisig — same as FeeRouter)
+export UPGRADER=0x...     # UPGRADER_ROLE (governance multisig + timelock — same as FeeRouter)
+export NAME="ATLAS Ticket"
+export SYMBOL="ATLAS"
+```
+
+```bash
+cd contracts
+forge script script/DeployAtlasTicket.s.sol:DeployAtlasTicket \
+  --rpc-url $RPC_URL \
+  --account deployer \
+  --broadcast \
+  --verify \
+  --etherscan-api-key $ETHERSCAN_API_KEY \
+  --verifier-url https://api.basescan.org/api \
+  -vvv
+```
+
+Expected console output:
+
+```text
+AtlasTicket impl  : 0x...
+AtlasTicket proxy : 0x...
+Expected addr     : 0x...
+```
+
+Record the proxy in `deployments.json` under `atlasTicket.proxies.base_usdc`.
+
+## 6. Deployed addresses (record after deploy)
 
 | Role | Address |
 |------|---------|
 | FeeRouter proxy | _record after deploy_ |
 | FeeRouter impl | _record after deploy_ |
+| AtlasTicket proxy | _record after deploy_ |
+| AtlasTicket impl | _record after deploy_ |
 | Treasury (TREASURY) | _… your value_ |
 | Admin multisig (ADMIN) | _… your value_ |
 | Upgrader multisig (UPGRADER) | _… your value_ |
 | Pauser multisig (PAUSER) | _… your value_ |
+| Minter (MINTER) | _… your value_ |

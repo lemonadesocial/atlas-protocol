@@ -1,4 +1,4 @@
-# MegaETH — FeeRouter deploy runbook (experimental)
+# MegaETH — FeeRouter + AtlasTicket deploy runbook (experimental)
 
 | Field | Value |
 |-------|-------|
@@ -60,13 +60,50 @@ If automated verification is not yet supported, paste the flattened source via t
 - Decide whether to advertise the chain in `.well-known/atlas.json`. Most platforms should leave it out of `settlement.chains` until USDC is available.
 - Confirm `pause` / `setFeeSchedule` smoke tests from the operations multisig.
 
-## 5. Deployed addresses (record after deploy)
+## 5. AtlasTicket deploy
+
+AtlasTicket has no stablecoin parameter — it only needs role recipients and a (name, symbol)
+pair. The same `ADMIN` / `PAUSER` / `UPGRADER` multisigs from FeeRouter are reused; `MINTER`
+is the operations service that calls `mint(...)` after a successful settlement.
+
+```bash
+export ADMIN=0x...
+export MINTER=0x...
+export PAUSER=0x...
+export UPGRADER=0x...
+export NAME="ATLAS Ticket"
+export SYMBOL="ATLAS"
+```
+
+```bash
+cd contracts
+forge script script/DeployAtlasTicket.s.sol:DeployAtlasTicket \
+  --rpc-url $RPC_URL \
+  --account deployer \
+  --broadcast \
+  -vvv
+```
+
+Expected console output:
+
+```text
+AtlasTicket impl  : 0x...
+AtlasTicket proxy : 0x...
+Expected addr     : 0x...
+```
+
+Record the proxy in `deployments.json` under `atlasTicket.proxies.megaeth_usdm`.
+
+## 6. Deployed addresses (record after deploy)
 
 | Role | Address |
 |------|---------|
 | FeeRouter proxy | _record after deploy_ |
 | FeeRouter impl | _record after deploy_ |
+| AtlasTicket proxy | _record after deploy_ |
+| AtlasTicket impl | _record after deploy_ |
 | Treasury (TREASURY) | _… your value_ |
 | Admin multisig (ADMIN) | _… your value_ |
 | Upgrader multisig (UPGRADER) | _… your value_ |
 | Pauser multisig (PAUSER) | _… your value_ |
+| Minter (MINTER) | _… your value_ |

@@ -1,8 +1,8 @@
-# Per-chain FeeRouter deployment runbooks
+# Per-chain FeeRouter + AtlasTicket deployment runbooks
 
-One file per supported EVM chain. Each runbook documents the required env vars, the canonical stablecoin contract on that chain, the `forge script` invocation, the post-deploy verification command, and the CREATE2 address derivation.
+One file per supported EVM chain. Each runbook documents the required env vars, the canonical stablecoin contract on that chain, the `forge script` invocations for both FeeRouter and AtlasTicket, the post-deploy verification commands, and the CREATE2 address derivation.
 
-Deployment is **EVM-portable**. The same `script/Deploy.s.sol` runs against every chain; only the env vars differ. See [`MULTICHAIN.md`](../MULTICHAIN.md) for the architectural rationale.
+Deployment is **EVM-portable**. The same `script/Deploy.s.sol` (FeeRouter) and `script/DeployAtlasTicket.s.sol` (AtlasTicket) run against every chain; only the env vars differ. See [`MULTICHAIN.md`](../MULTICHAIN.md) for the architectural rationale.
 
 ## Index
 
@@ -17,7 +17,7 @@ Deployment is **EVM-portable**. The same `script/Deploy.s.sol` runs against ever
 
 ## Standard env-var set
 
-Every runbook expects the same five env vars, plus one chain-specific RPC URL:
+FeeRouter takes these env vars, plus one chain-specific RPC URL:
 
 ```bash
 export STABLECOIN=0x...     # ERC-20 stablecoin (USDC for Circle chains, USDM for MegaETH)
@@ -28,15 +28,34 @@ export PAUSER=0x...         # PAUSER_ROLE recipient (operations multisig)
 export DEPLOYER=0x...       # Private key broadcasting the tx (or use --account / hardware wallet)
 ```
 
+AtlasTicket takes a different (smaller) env-var set — no stablecoin, no treasury, plus a
+distinct minter role:
+
+```bash
+export ADMIN=0x...          # DEFAULT_ADMIN_ROLE (reuse FeeRouter's value)
+export MINTER=0x...         # MINTER_ROLE — operations service that mints after settlement
+export PAUSER=0x...         # PAUSER_ROLE (reuse FeeRouter's value)
+export UPGRADER=0x...       # UPGRADER_ROLE (reuse FeeRouter's value)
+export NAME="ATLAS Ticket"  # ERC-721 collection name
+export SYMBOL="ATLAS"       # ERC-721 collection symbol
+```
+
 ## CREATE2 address derivation
 
-The deploy script computes the proxy address with:
+The FeeRouter deploy script computes the proxy address with:
 
 ```text
 expected = keccak256(0xff || 0x4e59b44847b379578588920cA78FbF26c0B4956C || salt || keccak256(initCode))
 salt     = keccak256("atlas-protocol/FeeRouter v0.1.0")
 initCode = type(ERC1967Proxy).creationCode || abi.encode(impl, initData)
 initData = FeeRouter.initialize(admin, upgrader, pauser, treasury, stablecoin)
+```
+
+AtlasTicket uses an analogous derivation with a different salt and initData shape:
+
+```text
+salt     = keccak256("atlas-protocol/AtlasTicket v0.1.0")
+initData = AtlasTicket.initialize(admin, minter, pauser, upgrader, name, symbol)
 ```
 
 > **Important:** because `initData` embeds the chain-specific `(admin, upgrader, pauser, treasury, stablecoin)` tuple AND because `impl` is created with plain `CREATE` (so its address depends on the deployer's nonce on that chain), the resulting proxy address is **NOT** byte-identical across chains by default. Two ways to make it identical when needed:
