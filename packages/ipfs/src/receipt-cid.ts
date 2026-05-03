@@ -2,9 +2,10 @@ import { canonicalize } from "./canonicalize.js";
 import { generateCid } from "./cid.js";
 
 /**
- * Minimal ATLAS purchase receipt shape used for CID generation. The full receipt
- * type will be standardized in a future release of @atlasprotocol/server-sdk; this is an
- * interim definition local to @atlasprotocol/ipfs.
+ * Minimal ATLAS purchase receipt shape used for CID generation. This is the
+ * flat input shape `generateReceiptCid` canonicalizes — distinct from the
+ * W3C VC `AtlasReceipt` exported by `@atlasprotocol/types`, which is the
+ * full credential consumed by `generateReceipt` in `@atlasprotocol/server-sdk`.
  */
 export interface AtlasReceipt {
   purchase_id: string;

@@ -49,7 +49,7 @@ const cid = await generateReceiptCid(receipt);
 
 ## Choose your pinner
 
-All pinners implement the same `Pinner` interface:
+All pinners implement the same `Pinner` interface — defined in [`@atlasprotocol/types`](../types) and re-exported from this package for back-compat:
 
 ```ts
 interface Pinner {
@@ -58,6 +58,12 @@ interface Pinner {
   unpin(cid: string): Promise<void>;
   isPinned(cid: string): Promise<boolean>;
 }
+```
+
+```ts
+// Either import path resolves to the same interface.
+import type { Pinner } from '@atlasprotocol/types';
+import type { Pinner } from '@atlasprotocol/ipfs';
 ```
 
 ### Why two methods?
