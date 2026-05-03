@@ -173,11 +173,50 @@ export function getRewardLedgerImplementation(): string | undefined {
 
 /**
  * Returns chain slugs that have a non-null FeeRouter proxy address recorded.
+ *
+ * For per-contract-family breakdowns (FeeRouter / AtlasTicket / RewardLedger),
+ * use {@link listDeployedChainsByContract}.
  */
 export function listDeployedChains(): string[] {
   return Object.entries(getRegistry().feeRouter.proxies)
     .filter(([, address]) => address !== null && address !== undefined)
     .map(([slug]) => slug);
+}
+
+/**
+ * Per-contract-family breakdown of which chains have a non-null proxy
+ * address recorded for that contract.
+ *
+ * `feeRouter` and `atlasTicket` enumerate over the full 16-slug universe.
+ * `rewardLedger` enumerates over the canonical-only slot list (Base mainnet
+ * + Base Sepolia in v1 — multi-chain RewardLedger is Phase 7+).
+ */
+export interface DeployedChainsByContract {
+  feeRouter: string[];
+  atlasTicket: string[];
+  rewardLedger: string[];
+}
+
+/**
+ * Returns the set of chain slugs that have a non-null proxy address for
+ * each contract family. All three arrays are empty until contracts are
+ * actually deployed.
+ *
+ * This is the multi-contract counterpart of {@link listDeployedChains}
+ * (which only reports FeeRouter for backwards compatibility).
+ */
+export function listDeployedChainsByContract(): DeployedChainsByContract {
+  const registry = getRegistry();
+  const filterDeployed = (proxies: Record<string, string | null>): string[] =>
+    Object.entries(proxies)
+      .filter(([, address]) => address !== null && address !== undefined)
+      .map(([slug]) => slug);
+
+  return {
+    feeRouter: filterDeployed(registry.feeRouter.proxies),
+    atlasTicket: filterDeployed(registry.atlasTicket.proxies),
+    rewardLedger: filterDeployed(registry.rewardLedger.proxies),
+  };
 }
 
 /**

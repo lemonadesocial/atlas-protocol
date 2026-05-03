@@ -148,6 +148,8 @@ Authoritative per-chain deploy instructions live in [`deploy/`](./deploy/):
 | Base mainnet | Production | [`deploy/base.md`](./deploy/base.md) |
 | Optimism | Production | [`deploy/optimism.md`](./deploy/optimism.md) |
 | Arbitrum One | Production | [`deploy/arbitrum.md`](./deploy/arbitrum.md) |
+| Polygon PoS | Production | [`deploy/polygon.md`](./deploy/polygon.md) |
+| zkSync Era | Production (requires `foundry-zksync`; see runbook) | [`deploy/zksync.md`](./deploy/zksync.md) |
 | World Chain | Production | [`deploy/worldchain.md`](./deploy/worldchain.md) |
 | MegaETH | Experimental (USDM, no canonical Circle USDC yet) | [`deploy/megaeth.md`](./deploy/megaeth.md) |
 | Tempo | Placeholder (pending public mainnet) | [`deploy/tempo.md`](./deploy/tempo.md) |

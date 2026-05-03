@@ -15,6 +15,7 @@ import {
   getRewardLedgerAddress,
   getRewardLedgerImplementation,
   listDeployedChains,
+  listDeployedChainsByContract,
   listKnownChains,
 } from "../deployments.js";
 
@@ -51,6 +52,20 @@ describe("deployments", () => {
 
   it("listDeployedChains is empty initially (all proxies null)", () => {
     expect(listDeployedChains()).toEqual([]);
+  });
+
+  it("listDeployedChainsByContract returns empty arrays for every family initially", () => {
+    expect(listDeployedChainsByContract()).toEqual({
+      feeRouter: [],
+      atlasTicket: [],
+      rewardLedger: [],
+    });
+  });
+
+  it("listKnownChains exactly matches Object.keys(CHAIN_SPECS) (the universe)", () => {
+    const known = new Set(listKnownChains());
+    const specs = new Set(Object.keys(CHAIN_SPECS));
+    expect(known).toEqual(specs);
   });
 
   it("listKnownChains returns all 16 chain slugs declared in deployments.json", () => {
@@ -175,6 +190,47 @@ describe("deployments", () => {
       __resetDeploymentsCacheForTests();
 
       expect(getFeeRouterImplementation()).toBe("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef");
+    });
+
+    it("listDeployedChainsByContract reports per-family deployments after patching all three", () => {
+      const original = JSON.parse(readFileSync(REPO_ROOT_PATH, "utf8")) as {
+        feeRouter: { proxies: Record<string, string | null> };
+        atlasTicket: { proxies: Record<string, string | null> };
+        rewardLedger: { proxies: Record<string, string | null> };
+      };
+      const patched = {
+        ...original,
+        feeRouter: {
+          ...original.feeRouter,
+          proxies: {
+            ...original.feeRouter.proxies,
+            base_usdc: "0x1111111111111111111111111111111111111111",
+            optimism_usdc: "0x2222222222222222222222222222222222222222",
+          },
+        },
+        atlasTicket: {
+          ...original.atlasTicket,
+          proxies: {
+            ...original.atlasTicket.proxies,
+            base_usdc: "0x3333333333333333333333333333333333333333",
+          },
+        },
+        rewardLedger: {
+          ...original.rewardLedger,
+          proxies: {
+            ...original.rewardLedger.proxies,
+            base_sepolia_usdc: "0x4444444444444444444444444444444444444444",
+          },
+        },
+      };
+      writeFileSync(REPO_ROOT_PATH, JSON.stringify(patched, null, 2) + "\n", "utf8");
+
+      __resetDeploymentsCacheForTests();
+
+      const deployed = listDeployedChainsByContract();
+      expect(new Set(deployed.feeRouter)).toEqual(new Set(["base_usdc", "optimism_usdc"]));
+      expect(deployed.atlasTicket).toEqual(["base_usdc"]);
+      expect(deployed.rewardLedger).toEqual(["base_sepolia_usdc"]);
     });
   });
 

@@ -11,6 +11,8 @@ Deployment is **EVM-portable**. The same `script/Deploy.s.sol` (FeeRouter), `scr
 | Base mainnet | Production | [`base.md`](./base.md) |
 | Optimism (OP Mainnet) | Production | [`optimism.md`](./optimism.md) |
 | Arbitrum One | Production | [`arbitrum.md`](./arbitrum.md) |
+| Polygon PoS | Production | [`polygon.md`](./polygon.md) |
+| zkSync Era | Production (requires `foundry-zksync`) | [`zksync.md`](./zksync.md) |
 | World Chain | Production | [`worldchain.md`](./worldchain.md) |
 | MegaETH | Experimental | [`megaeth.md`](./megaeth.md) |
 | Tempo | Placeholder (pending public mainnet) | [`tempo.md`](./tempo.md) |
