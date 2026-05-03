@@ -5,6 +5,26 @@ All notable changes to `@atlasprotocol/ipfs` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/lemonadesocial/atlas-protocol/compare/ipfs-v0.1.6...ipfs-v0.2.0) (2026-05-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **ipfs,server-sdk:** Pinner.pin(content) is removed in favor of pinJson(obj) and pinBytes(content). generateReceipt is now async and returns { receipt, cid? } instead of AtlasReceipt directly. ATLAS is pre-production; no external consumers yet.
+
+### Features
+
+* **ipfs,server-sdk:** typed Pinner interface (pinJson/pinBytes) + receipt auto-pinning ([#44](https://github.com/lemonadesocial/atlas-protocol/issues/44)) ([4ea0da2](https://github.com/lemonadesocial/atlas-protocol/commit/4ea0da243e5098bc7472d1d8254b6cecd95be474))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * devDependencies
+    * @atlasprotocol/server-sdk bumped to 0.4.0
+  * peerDependencies
+    * @atlasprotocol/server-sdk bumped to 0.4.0
+
 ## [0.1.6](https://github.com/lemonadesocial/atlas-protocol/compare/ipfs-v0.1.5...ipfs-v0.1.6) (2026-05-03)
 
 

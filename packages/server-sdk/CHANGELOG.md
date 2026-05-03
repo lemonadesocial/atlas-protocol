@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.4.0](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.3.0...server-sdk-v0.4.0) (2026-05-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **ipfs,server-sdk:** Pinner.pin(content) is removed in favor of pinJson(obj) and pinBytes(content). generateReceipt is now async and returns { receipt, cid? } instead of AtlasReceipt directly. ATLAS is pre-production; no external consumers yet.
+
+### Features
+
+* **contracts,server-sdk:** add AtlasTicket NFT contract + SDK helpers ([#41](https://github.com/lemonadesocial/atlas-protocol/issues/41)) ([55f239b](https://github.com/lemonadesocial/atlas-protocol/commit/55f239b0742a8be1afa1e63accab9a2ab69c50a5))
+* **contracts,server-sdk:** add RewardLedger accrual + claim contract + SDK helpers ([#43](https://github.com/lemonadesocial/atlas-protocol/issues/43)) ([97f0464](https://github.com/lemonadesocial/atlas-protocol/commit/97f04643264b3d4d131c864defca6b88b73f0f17))
+* **ipfs,server-sdk:** typed Pinner interface (pinJson/pinBytes) + receipt auto-pinning ([#44](https://github.com/lemonadesocial/atlas-protocol/issues/44)) ([4ea0da2](https://github.com/lemonadesocial/atlas-protocol/commit/4ea0da243e5098bc7472d1d8254b6cecd95be474))
+* **server-sdk,examples:** end-to-end integration test + dual-protocol-server polish ([#45](https://github.com/lemonadesocial/atlas-protocol/issues/45)) ([020d9c9](https://github.com/lemonadesocial/atlas-protocol/commit/020d9c961dfefc9f57a9cf882b620d4b8255248c))
+
+
+### Bug Fixes
+
+* **server-sdk:** drop @atlasprotocol/ipfs workspace dep to break release-please cycle ([#46](https://github.com/lemonadesocial/atlas-protocol/issues/46)) ([509f85f](https://github.com/lemonadesocial/atlas-protocol/commit/509f85f5af2855396262d82163567616ad3b95c1))
+
 ## [0.3.0](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.2.0...server-sdk-v0.3.0) (2026-05-03)
 
 
