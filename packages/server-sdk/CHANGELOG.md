@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.2.0...server-sdk-v0.3.0) (2026-05-03)
+
+
+### Features
+
+* **server-sdk:** adoption polish — idempotency, rate limiting, validation ([#37](https://github.com/lemonadesocial/atlas-protocol/issues/37)) ([5820403](https://github.com/lemonadesocial/atlas-protocol/commit/5820403fec5047cd00316e0dd2b6f51573551abb))
+* **server-sdk:** correctness layer — receipts, holds, replay, expiry, approval flow ([#35](https://github.com/lemonadesocial/atlas-protocol/issues/35)) ([ad369c6](https://github.com/lemonadesocial/atlas-protocol/commit/ad369c6f2df2c31b3057ed22eaf1dd0ba54c9dee))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @atlasprotocol/mpp bumped to 0.3.0
+
 ## [0.2.0](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.2.0...server-sdk-v0.2.0) (2026-05-02)
 
 

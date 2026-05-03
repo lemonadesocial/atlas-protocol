@@ -1,6 +1,6 @@
 {
   "name": "@atlasprotocol/server-sdk",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Server-side ATLAS Protocol primitives. Manifest generation, schema mapping, multi-chain payment verification. Framework-agnostic.",
   "license": "MIT",
   "repository": {
