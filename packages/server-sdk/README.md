@@ -8,6 +8,20 @@ Host a compliant ATLAS Protocol endpoint from any Node HTTP framework. The SDK s
 pnpm add @atlasprotocol/server-sdk
 ```
 
+## Type imports
+
+Protocol type definitions (`AtlasEvent`, `AtlasTicketType`, `AtlasManifest`, `AtlasPurchaseChallenge`, `AtlasReceipt`, `Pinner`, etc.) live in [`@atlasprotocol/types`](../types). `@atlasprotocol/server-sdk` re-exports every type it consumes from there, so both of these compile against the same declaration:
+
+```ts
+// New code: import directly from the types package.
+import type { AtlasEvent, AtlasReceipt } from '@atlasprotocol/types';
+
+// Existing code: keep importing from server-sdk — same types, no behavior change.
+import type { AtlasEvent, AtlasReceipt } from '@atlasprotocol/server-sdk';
+```
+
+Runtime exports (the zod schemas like `AtlasEventSchema`, the `generateReceipt` builder, the W3C VC URL constants) live here in `server-sdk` and are not duplicated in `@atlasprotocol/types` — that package is types-only.
+
 ## Quickstart
 
 ```ts
