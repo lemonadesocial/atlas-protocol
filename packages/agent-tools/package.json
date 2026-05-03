@@ -1,6 +1,6 @@
 {
   "name": "@atlasprotocol/agent-tools",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Agent-side ATLAS Protocol tooling for LangChain and MCP. Speak ATLAS from any agent runtime.",
   "license": "MIT",
   "repository": {
