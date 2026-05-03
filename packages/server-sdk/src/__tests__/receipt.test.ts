@@ -1,13 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { PinOptions, PinResult, Pinner } from "@atlasprotocol/ipfs";
-
 import {
   ATLAS_CREDENTIALS_V1_CONTEXT,
   ATLAS_RECEIPT_TYPES,
   W3C_VC_V1_CONTEXT,
   generateReceipt,
 } from "../receipt.js";
+
+// Mirrors `@atlasprotocol/ipfs`'s public types — duplicated here so this
+// package does not declare a workspace link to ipfs (see receipt.ts comment
+// for the cycle that link would create). Concrete pinners from
+// `@atlasprotocol/ipfs` satisfy these structural types.
+interface PinOptions {
+  name?: string;
+  metadata?: Record<string, string>;
+}
+interface PinResult {
+  cid: string;
+  size: number;
+}
+interface Pinner {
+  pinJson(obj: unknown, opts?: PinOptions): Promise<PinResult>;
+  pinBytes(content: Uint8Array, opts?: PinOptions): Promise<PinResult>;
+  unpin(cid: string): Promise<void>;
+  isPinned(cid: string): Promise<boolean>;
+}
 
 const BASE_OPTS = {
   holdId: "hold_xyz789",
