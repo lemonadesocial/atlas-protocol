@@ -3,5 +3,6 @@
   "packages/server-sdk": "0.4.0",
   "packages/mpp": "0.3.0",
   "packages/ipfs": "0.2.0",
-  "packages/connector-framework": "0.2.2"
+  "packages/connector-framework": "0.2.2",
+  "packages/types": "0.0.0"
 }

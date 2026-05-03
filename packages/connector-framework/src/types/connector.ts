@@ -1,4 +1,4 @@
-import type { AtlasEvent, AtlasTicketType } from "@atlasprotocol/server-sdk";
+import type { AtlasEvent, AtlasTicketType } from "@atlasprotocol/types";
 
 import type { AuthContext } from "./auth.js";
 import type { SearchParams } from "./search.js";

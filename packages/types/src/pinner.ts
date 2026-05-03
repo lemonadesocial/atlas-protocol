@@ -17,16 +17,16 @@
  * pre-stringify and pass through pinBytes when they have a JSON object —
  * the type signature exists to make the right choice obvious.
  *
- * Concrete implementations exist for Pinata, Web3.Storage, Filebase and a
- * self-hosted Kubo daemon.
+ * Concrete implementations live in `@atlasprotocol/ipfs` (Pinata,
+ * Web3.Storage, Filebase, and self-hosted Kubo).
  */
 export interface Pinner {
   pinJson(obj: unknown, opts?: PinOptions): Promise<PinResult>;
   pinBytes(content: Uint8Array, opts?: PinOptions): Promise<PinResult>;
   /**
    * `cid` is the same string form returned by `PinResult.cid` and used
-   * throughout the package (e.g. `cid.ts`, `receipt-cid.ts`). There is no
-   * opaque `CID` value type — everything is the human-readable string.
+   * throughout the ipfs package (e.g. `cid.ts`, `receipt-cid.ts`). There is
+   * no opaque `CID` value type — everything is the human-readable string.
    */
   unpin(cid: string): Promise<void>;
   isPinned(cid: string): Promise<boolean>;
