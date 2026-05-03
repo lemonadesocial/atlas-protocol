@@ -1,4 +1,4 @@
-# World Chain — FeeRouter + AtlasTicket deploy runbook
+# World Chain — FeeRouter + AtlasTicket + RewardLedger deploy runbook
 
 | Field | Value |
 |-------|-------|
@@ -93,7 +93,44 @@ Expected addr     : 0x...
 
 Record the proxy in `deployments.json` under `atlasTicket.proxies.worldchain_usdc`.
 
-## 6. Deployed addresses (record after deploy)
+## 6. RewardLedger deploy
+
+RewardLedger takes a `STABLECOIN` parameter (same value as FeeRouter's `STABLECOIN`) plus
+role recipients. The same `ADMIN` / `PAUSER` / `UPGRADER` multisigs from FeeRouter are reused;
+`RECORDER` is the address allowed to call `recordReward(...)` — typically the FeeRouter or the
+operations settlement service.
+
+```bash
+export ADMIN=0x...
+export RECORDER=0x...
+export PAUSER=0x...
+export UPGRADER=0x...
+export STABLECOIN=0x79A02482A880bCe3F13E09da970dC34dB4cD24D1   # native Circle USDC on World Chain
+```
+
+```bash
+cd contracts
+forge script script/DeployRewardLedger.s.sol:DeployRewardLedger \
+  --rpc-url $RPC_URL \
+  --account deployer \
+  --broadcast \
+  --verify \
+  --etherscan-api-key $ETHERSCAN_API_KEY \
+  --verifier-url https://api.worldscan.org/api \
+  -vvv
+```
+
+Expected console output:
+
+```text
+RewardLedger impl  : 0x...
+RewardLedger proxy : 0x...
+Expected addr      : 0x...
+```
+
+Record the proxy in `deployments.json` under `rewardLedger.proxies.worldchain_usdc`.
+
+## 7. Deployed addresses (record after deploy)
 
 | Role | Address |
 |------|---------|
@@ -101,8 +138,11 @@ Record the proxy in `deployments.json` under `atlasTicket.proxies.worldchain_usd
 | FeeRouter impl | _record after deploy_ |
 | AtlasTicket proxy | _record after deploy_ |
 | AtlasTicket impl | _record after deploy_ |
+| RewardLedger proxy | _record after deploy_ |
+| RewardLedger impl | _record after deploy_ |
 | Treasury (TREASURY) | _… your value_ |
 | Admin multisig (ADMIN) | _… your value_ |
 | Upgrader multisig (UPGRADER) | _… your value_ |
 | Pauser multisig (PAUSER) | _… your value_ |
 | Minter (MINTER) | _… your value_ |
+| Recorder (RECORDER) | _… your value_ |

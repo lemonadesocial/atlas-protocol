@@ -1,4 +1,4 @@
-# MegaETH — FeeRouter + AtlasTicket deploy runbook (experimental)
+# MegaETH — FeeRouter + AtlasTicket + RewardLedger deploy runbook (experimental)
 
 | Field | Value |
 |-------|-------|
@@ -94,7 +94,41 @@ Expected addr     : 0x...
 
 Record the proxy in `deployments.json` under `atlasTicket.proxies.megaeth_usdm`.
 
-## 6. Deployed addresses (record after deploy)
+## 6. RewardLedger deploy
+
+RewardLedger takes a `STABLECOIN` parameter (same value as FeeRouter's `STABLECOIN` — USDM on
+MegaETH) plus role recipients. The same `ADMIN` / `PAUSER` / `UPGRADER` multisigs from FeeRouter
+are reused; `RECORDER` is the address allowed to call `recordReward(...)` — typically the
+FeeRouter or the operations settlement service.
+
+```bash
+export ADMIN=0x...
+export RECORDER=0x...
+export PAUSER=0x...
+export UPGRADER=0x...
+export STABLECOIN=0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7   # USDM (native MegaETH stablecoin)
+```
+
+```bash
+cd contracts
+forge script script/DeployRewardLedger.s.sol:DeployRewardLedger \
+  --rpc-url $RPC_URL \
+  --account deployer \
+  --broadcast \
+  -vvv
+```
+
+Expected console output:
+
+```text
+RewardLedger impl  : 0x...
+RewardLedger proxy : 0x...
+Expected addr      : 0x...
+```
+
+Record the proxy in `deployments.json` under `rewardLedger.proxies.megaeth_usdm`.
+
+## 7. Deployed addresses (record after deploy)
 
 | Role | Address |
 |------|---------|
@@ -102,8 +136,11 @@ Record the proxy in `deployments.json` under `atlasTicket.proxies.megaeth_usdm`.
 | FeeRouter impl | _record after deploy_ |
 | AtlasTicket proxy | _record after deploy_ |
 | AtlasTicket impl | _record after deploy_ |
+| RewardLedger proxy | _record after deploy_ |
+| RewardLedger impl | _record after deploy_ |
 | Treasury (TREASURY) | _… your value_ |
 | Admin multisig (ADMIN) | _… your value_ |
 | Upgrader multisig (UPGRADER) | _… your value_ |
 | Pauser multisig (PAUSER) | _… your value_ |
 | Minter (MINTER) | _… your value_ |
+| Recorder (RECORDER) | _… your value_ |

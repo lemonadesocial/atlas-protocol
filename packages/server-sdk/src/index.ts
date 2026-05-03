@@ -10,6 +10,7 @@ export * from "./payment-verify.js";
 export * from "./rate-limit.js";
 export * from "./receipt.js";
 export * from "./replay.js";
+export * from "./reward-ledger.js";
 export * from "./schema-mapper.js";
 export * from "./stripe-verifier.js";
 export * from "./types/index.js";

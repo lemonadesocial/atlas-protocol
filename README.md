@@ -133,7 +133,7 @@ Each supported settlement chain has its own deploy runbook in [`contracts/deploy
 
 ## Deployments
 
-[`deployments.json`](./deployments.json) at the repo root is the canonical registry of deployed ATLAS contracts — currently `feeRouter` (Stage 1 payment settlement) and `atlasTicket` (Stage 2 ERC-721 NFT tickets). For each contract family it records the CREATE2 salt for the implementation contract (deterministic across chains) and the per-chain UUPS proxy addresses (per-chain by design — chain-specific init params produce per-chain digests). Every chain present in the SDK's `CHAIN_SPECS` has an entry, including testnet variants; entries are `null` until that chain has a real deployment.
+[`deployments.json`](./deployments.json) at the repo root is the canonical registry of deployed ATLAS contracts — currently `feeRouter` (Stage 1 payment settlement), `atlasTicket` (Stage 2 ERC-721 NFT tickets), and `rewardLedger` (Stage 3 organizer / attendee / referral reward accrual + claim ledger). For each contract family it records the CREATE2 salt for the implementation contract (deterministic across chains) and the per-chain UUPS proxy addresses (per-chain by design — chain-specific init params produce per-chain digests). Every chain present in the SDK's `CHAIN_SPECS` has an entry, including testnet variants; entries are `null` until that chain has a real deployment.
 
 The SDK exposes typed accessors over this registry:
 
@@ -143,19 +143,23 @@ import {
   getAtlasTicketImplementation,
   getFeeRouterAddress,
   getFeeRouterImplementation,
+  getRewardLedgerAddress,
+  getRewardLedgerImplementation,
   listDeployedChains,
   listKnownChains,
 } from "@atlasprotocol/server-sdk";
 
-getFeeRouterAddress("base_usdc");   // → "0x..." once deployed, undefined otherwise
-getFeeRouterImplementation();       // → CREATE2 implementation address
-getAtlasTicketAddress("base_usdc"); // → AtlasTicket proxy on Base, undefined otherwise
-getAtlasTicketImplementation();     // → AtlasTicket CREATE2 implementation address
-listDeployedChains();               // → chain slugs that have a non-null FeeRouter proxy
-listKnownChains();                  // → every chain slug in deployments.json
+getFeeRouterAddress("base_usdc");     // → "0x..." once deployed, undefined otherwise
+getFeeRouterImplementation();         // → CREATE2 implementation address
+getAtlasTicketAddress("base_usdc");   // → AtlasTicket proxy on Base, undefined otherwise
+getAtlasTicketImplementation();       // → AtlasTicket CREATE2 implementation address
+getRewardLedgerAddress("base_usdc");  // → RewardLedger proxy on Base, undefined otherwise
+getRewardLedgerImplementation();      // → RewardLedger CREATE2 implementation address
+listDeployedChains();                 // → chain slugs that have a non-null FeeRouter proxy
+listKnownChains();                    // → every chain slug in deployments.json
 ```
 
-When adding a new chain, update `CHAIN_SPECS` and both `feeRouter.proxies` + `atlasTicket.proxies` in `deployments.json` together — the SDK's parity test fails if either side has an orphan key. See [`contracts/MULTICHAIN.md`](./contracts/MULTICHAIN.md) for the deploy procedure and CREATE2 derivation details.
+When adding a new chain, update `CHAIN_SPECS` and `feeRouter.proxies` + `atlasTicket.proxies` + `rewardLedger.proxies` in `deployments.json` together — the SDK's parity test fails if any side has an orphan key. See [`contracts/MULTICHAIN.md`](./contracts/MULTICHAIN.md) for the deploy procedure and CREATE2 derivation details.
 
 ---
 

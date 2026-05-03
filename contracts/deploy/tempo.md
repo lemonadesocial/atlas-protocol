@@ -1,4 +1,4 @@
-# Tempo — FeeRouter + AtlasTicket deploy runbook (placeholder)
+# Tempo — FeeRouter + AtlasTicket + RewardLedger deploy runbook (placeholder)
 
 | Field | Value |
 |-------|-------|
@@ -86,4 +86,39 @@ Expected addr     : 0x...
 ```
 
 Record the proxy in `deployments.json` under `atlasTicket.proxies.tempo_usdc` once Tempo's
+public mainnet ships.
+
+## RewardLedger deploy (when ready)
+
+RewardLedger takes a `STABLECOIN` parameter (same value as FeeRouter's `STABLECOIN`) plus role
+recipients. Use the same `ADMIN` / `PAUSER` / `UPGRADER` multisigs as FeeRouter; `RECORDER` is
+the address allowed to call `recordReward(...)` — typically the FeeRouter or the operations
+settlement service.
+
+```bash
+export ADMIN=0x...
+export RECORDER=0x...
+export PAUSER=0x...
+export UPGRADER=0x...
+export STABLECOIN=0x...   # TODO — verified Tempo USDC contract
+```
+
+```bash
+cd contracts
+forge script script/DeployRewardLedger.s.sol:DeployRewardLedger \
+  --rpc-url $RPC_URL \
+  --account deployer \
+  --broadcast \
+  -vvv
+```
+
+Expected console output:
+
+```text
+RewardLedger impl  : 0x...
+RewardLedger proxy : 0x...
+Expected addr      : 0x...
+```
+
+Record the proxy in `deployments.json` under `rewardLedger.proxies.tempo_usdc` once Tempo's
 public mainnet ships.
