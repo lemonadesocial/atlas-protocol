@@ -1,3 +1,4 @@
+import { canonicalize } from "../canonicalize.js";
 import type { FetchLike, PinOptions, PinResult, Pinner } from "./pinner.js";
 
 export interface FilebasePinnerConfig {
@@ -32,7 +33,13 @@ export class FilebasePinner implements Pinner {
     this.bucket = config.bucket;
   }
 
-  async pin(content: Uint8Array, opts: PinOptions = {}): Promise<PinResult> {
+  async pinJson(obj: unknown, opts: PinOptions = {}): Promise<PinResult> {
+    const bytes = canonicalize(obj);
+    const effectiveOpts: PinOptions = opts.name ? opts : { ...opts, name: "atlas-payload.json" };
+    return this.pinBytes(bytes, effectiveOpts);
+  }
+
+  async pinBytes(content: Uint8Array, opts: PinOptions = {}): Promise<PinResult> {
     const filename = opts.name ?? "atlas-payload.bin";
     const form = new FormData();
     form.append("file", new Blob([content], { type: "application/octet-stream" }), filename);
@@ -52,7 +59,7 @@ export class FilebasePinner implements Pinner {
 
     if (!res.ok) {
       const text = await safeText(res);
-      throw new Error(`FilebasePinner.pin failed: ${res.status} ${res.statusText} ${text}`);
+      throw new Error(`FilebasePinner.pinBytes failed: ${res.status} ${res.statusText} ${text}`);
     }
 
     const data = (await res.json()) as {
@@ -62,7 +69,7 @@ export class FilebasePinner implements Pinner {
     };
     const cid = data.pin?.cid ?? data.cid;
     if (!cid) {
-      throw new Error("FilebasePinner.pin: response missing cid");
+      throw new Error("FilebasePinner.pinBytes: response missing cid");
     }
     return { cid, size: data.info?.size ?? content.byteLength };
   }

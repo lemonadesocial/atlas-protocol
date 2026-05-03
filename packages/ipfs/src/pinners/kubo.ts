@@ -1,3 +1,4 @@
+import { canonicalize } from "../canonicalize.js";
 import type { FetchLike, PinOptions, PinResult, Pinner } from "./pinner.js";
 
 export interface KuboPinnerConfig {
@@ -20,7 +21,13 @@ export class KuboPinner implements Pinner {
     this.apiUrl = (config.apiUrl ?? DEFAULT_API_URL).replace(/\/$/, "");
   }
 
-  async pin(content: Uint8Array, opts: PinOptions = {}): Promise<PinResult> {
+  async pinJson(obj: unknown, opts: PinOptions = {}): Promise<PinResult> {
+    const bytes = canonicalize(obj);
+    const effectiveOpts: PinOptions = opts.name ? opts : { ...opts, name: "atlas-payload.json" };
+    return this.pinBytes(bytes, effectiveOpts);
+  }
+
+  async pinBytes(content: Uint8Array, opts: PinOptions = {}): Promise<PinResult> {
     const filename = opts.name ?? "atlas-payload.bin";
     const form = new FormData();
     form.append("file", new Blob([content], { type: "application/octet-stream" }), filename);
@@ -32,7 +39,7 @@ export class KuboPinner implements Pinner {
     });
     if (!res.ok) {
       const text = await safeText(res);
-      throw new Error(`KuboPinner.pin failed: ${res.status} ${res.statusText} ${text}`);
+      throw new Error(`KuboPinner.pinBytes failed: ${res.status} ${res.statusText} ${text}`);
     }
     // Kubo /add returns NDJSON; the last line is the root.
     const text = await res.text();
@@ -41,7 +48,7 @@ export class KuboPinner implements Pinner {
       .split(/\r?\n/)
       .filter((l) => l.length > 0);
     if (lines.length === 0) {
-      throw new Error("KuboPinner.pin: empty response");
+      throw new Error("KuboPinner.pinBytes: empty response");
     }
     const last = lines[lines.length - 1] as string;
     const data = JSON.parse(last) as { Hash: string; Size: string | number };

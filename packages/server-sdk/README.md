@@ -136,11 +136,13 @@ The replay store enforces the 24-hour idempotency window from the protocol spec 
 
 Successful purchases produce a W3C Verifiable Credential receipt that mirrors the canonical `AtlasTicketReceipt` schema (`01-whitepaper/docs/02-SCHEMAS.md` §5 and `01-PROTOCOL-SPEC.md` §4). `generateReceipt` returns an unsigned credential — the host attaches an ES256 JWS proof block before publishing.
 
+`generateReceipt` is **async** and returns `{ receipt, cid? }`. The `cid` is populated when an optional `pinner` is supplied (see *Receipt auto-pinning* below).
+
 ```ts
 import { generateReceipt } from '@atlasprotocol/server-sdk';
 
 // On-chain settlement:
-const receipt = generateReceipt({
+const { receipt } = await generateReceipt({
   holdId: 'hold_xyz789',
   eventId: 'evt_abc123',
   attendee: '0x9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e',
@@ -155,7 +157,7 @@ const receipt = generateReceipt({
 });
 
 // Stripe SPT settlement:
-const stripeReceipt = generateReceipt({
+const { receipt: stripeReceipt } = await generateReceipt({
   /* …same fields… */
   paymentMethod: 'stripe_spt',
   paymentIntentId: 'pi_test_123',
@@ -165,6 +167,35 @@ const stripeReceipt = generateReceipt({
 ```
 
 The returned credential includes the canonical `@context` (`https://www.w3.org/2018/credentials/v1` and `https://atlas.events/credentials/v1`) and `type: ["VerifiableCredential", "AtlasTicketReceipt"]`. Sign with ES256 using a key listed in the issuer's `signing_keys` manifest.
+
+### Receipt auto-pinning
+
+Pass a `pinner` from `@atlasprotocol/ipfs` and the receipt is canonicalized and pinned to IPFS in the same call. The returned `cid` is the content-addressed identifier of the canonicalized receipt JSON.
+
+```ts
+import { generateReceipt } from '@atlasprotocol/server-sdk';
+import { PinataPinner } from '@atlasprotocol/ipfs';
+
+const pinner = new PinataPinner({ jwt: process.env.PINATA_JWT! });
+
+const { receipt, cid } = await generateReceipt({
+  holdId: 'hold_xyz789',
+  eventId: 'evt_abc123',
+  attendee: '0x9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e',
+  organizerAddress: 'did:web:bjc.events',
+  paymentMethod: 'x402',
+  txHash: '0xabcdef…',
+  settlementChain: 'base',
+  amount: '50.000000',
+  currency: 'USDC',
+  pinner,
+});
+console.log(cid); // bafy… — the pinned, canonicalized receipt
+```
+
+Any `Pinner` works: `PinataPinner`, `Web3StoragePinner`, `FilebasePinner`, or `KuboPinner`. `@atlasprotocol/ipfs` is an **optional** peer dependency — only install it if you opt into auto-pinning.
+
+> **Breaking change in 0.4.0.** `generateReceipt` was previously sync and returned an `AtlasReceipt` directly. It is now `async` and returns `{ receipt, cid? }`. Migrate by adding `await` and destructuring `receipt`.
 
 ## Approval-required events
 
