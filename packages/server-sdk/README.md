@@ -310,6 +310,80 @@ EVM chain. Per-chain proxy addresses live in `deployments.json` at the repo root
 exposed via `getAtlasTicketAddress(chainSlug)` / `getAtlasTicketContractAddress(chainSlug)`
 (both names point at the same lookup).
 
+## RewardLedger helpers
+
+RewardLedger is the Stage 3 accrual ledger. The recorder (typically the FeeRouter or backend
+settlement service) credits per-recipient organizer / attendee / referral rewards in the
+chain's stablecoin; recipients claim their accumulated balance on demand. Recordings are
+idempotent per `(paymentId, kind)` — a second `recordReward` call for the same tuple reverts
+on chain, so retried settlement jobs are safe by construction.
+
+The SDK ships viem-based helpers that build the calldata, parse the resulting logs, and
+look up the deployed contract address.
+
+```ts
+import {
+  buildRecordRewardTx,
+  getRewardLedgerContractAddress,
+  RewardKind,
+} from "@atlasprotocol/server-sdk";
+import { createWalletClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { base } from "viem/chains";
+
+const contract = getRewardLedgerContractAddress("base_usdc") as `0x${string}`;
+const tx = buildRecordRewardTx({
+  contract,
+  recipient: "0x9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e",
+  kind: RewardKind.Organizer,
+  amount: 600_000n, // 0.60 USDC at 6 decimals
+  paymentId: "0xabcd…", // bytes32 — same value used on the FeeRouter settle()
+});
+
+const wallet = createWalletClient({
+  account: privateKeyToAccount(process.env.RECORDER_PRIVATE_KEY as `0x${string}`),
+  chain: base,
+  transport: http(),
+});
+const hash = await wallet.sendTransaction(tx);
+```
+
+A recipient withdraws their balance with `buildClaimTx`. The transaction is signed by the
+recipient's own wallet — no role required, anyone can call `claim()` for themselves:
+
+```ts
+import { buildClaimTx } from "@atlasprotocol/server-sdk";
+
+const claimTx = buildClaimTx({ contract });
+const hash = await recipientWallet.sendTransaction(claimTx);
+```
+
+Read a recipient's accrued unclaimed balance with `getRewardBalance` — the caller supplies
+their own viem `PublicClient` so the SDK does not pin a transport:
+
+```ts
+import { getRewardBalance } from "@atlasprotocol/server-sdk";
+import { createPublicClient, http } from "viem";
+import { base } from "viem/chains";
+
+const client = createPublicClient({ chain: base, transport: http() });
+const balance = await getRewardBalance(client, {
+  contract,
+  recipient: "0x9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e",
+});
+// balance is a bigint of unclaimed 6-decimal stablecoin units.
+```
+
+> **Enum stability.** The `RewardKind` enum (`Organizer = 0`, `Attendee = 1`, `Referral = 2`)
+> is part of the on-chain ABI. Do **not** reorder the values without a coordinated upgrade
+> across the contract, this SDK, and any indexer that decodes `RewardRecorded.kind` by integer
+> value. The vitest suite pins these values so an accidental reorder fails the build.
+
+The contract is deployed via Nick's deterministic CREATE2 factory with salt
+`atlas-protocol/RewardLedger v0.1.0`. Per-chain proxy addresses live in `deployments.json`
+at the repo root and are exposed via `getRewardLedgerAddress(chainSlug)` /
+`getRewardLedgerContractAddress(chainSlug)`.
+
 ## Spec reference
 
 See [`../../specs/01-PROTOCOL-SPEC.md`](../../specs/01-PROTOCOL-SPEC.md) for the full ATLAS Protocol manifest format, capability list, and signing-key requirements.

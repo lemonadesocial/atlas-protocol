@@ -5,10 +5,12 @@ import { fileURLToPath } from "node:url";
 /**
  * Canonical CREATE2 deployment registry for ATLAS Protocol contracts.
  *
- * Currently tracks two contract families: `feeRouter` (Stage 1 payment
- * settlement) and `atlasTicket` (Stage 2 ERC-721 NFT tickets). Each family
- * has an implementation entry (a single CREATE2 address derived from a
- * version-pinned deployer salt) plus a per-chain proxy map.
+ * Currently tracks three contract families: `feeRouter` (Stage 1 payment
+ * settlement), `atlasTicket` (Stage 2 ERC-721 NFT tickets), and
+ * `rewardLedger` (Stage 3 organizer / attendee / referral reward accrual
+ * + claim ledger). Each family has an implementation entry (a single
+ * CREATE2 address derived from a version-pinned deployer salt) plus a
+ * per-chain proxy map.
  *
  * The source of truth is `deployments.json` at the repo root. This module
  * loads the JSON synchronously and exposes typed accessors.
@@ -49,6 +51,10 @@ export interface DeploymentsRegistry {
     proxies: Record<string, string | null>;
   };
   atlasTicket: {
+    implementation: ContractImplementation;
+    proxies: Record<string, string | null>;
+  };
+  rewardLedger: {
     implementation: ContractImplementation;
     proxies: Record<string, string | null>;
   };
@@ -138,6 +144,31 @@ export function getAtlasTicketAddress(chainSlug: string): string | undefined {
  */
 export function getAtlasTicketImplementation(): string | undefined {
   return getRegistry().atlasTicket.implementation.create2_address ?? undefined;
+}
+
+/**
+ * Returns the RewardLedger UUPS proxy address for the given chain slug, or
+ * `undefined` if the chain has no recorded deployment yet.
+ *
+ * Chain slugs match `Object.keys(CHAIN_SPECS)` in `chain-specs.ts`
+ * (snake_case, e.g. `base_usdc`, `arbitrum_sepolia_usdc`).
+ */
+export function getRewardLedgerAddress(chainSlug: string): string | undefined {
+  const proxy = getRegistry().rewardLedger.proxies[chainSlug];
+  return proxy ?? undefined;
+}
+
+/**
+ * Returns the RewardLedger implementation contract's CREATE2 address, or
+ * `undefined` if the implementation has not yet been deployed.
+ *
+ * The implementation is deterministic across all EVM chains (same bytecode,
+ * same deployer salt). The proxies pointing at it are per-chain because
+ * `initialize()` embeds chain-specific role assignments and the chain's
+ * stablecoin address.
+ */
+export function getRewardLedgerImplementation(): string | undefined {
+  return getRegistry().rewardLedger.implementation.create2_address ?? undefined;
 }
 
 /**

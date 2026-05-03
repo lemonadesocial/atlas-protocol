@@ -1,4 +1,4 @@
-# Base mainnet — FeeRouter + AtlasTicket deploy runbook
+# Base mainnet — FeeRouter + AtlasTicket + RewardLedger deploy runbook
 
 | Field | Value |
 |-------|-------|
@@ -106,7 +106,44 @@ Expected addr     : 0x...
 
 Record the proxy in `deployments.json` under `atlasTicket.proxies.base_usdc`.
 
-## 6. Deployed addresses (record after deploy)
+## 6. RewardLedger deploy
+
+RewardLedger takes a `STABLECOIN` parameter (same value as FeeRouter's `STABLECOIN`) plus
+role recipients. The same `ADMIN` / `PAUSER` / `UPGRADER` multisigs from FeeRouter are reused;
+`RECORDER` is the address allowed to call `recordReward(...)` — typically the FeeRouter or the
+operations settlement service.
+
+```bash
+export ADMIN=0x...        # DEFAULT_ADMIN_ROLE (governance multisig — same as FeeRouter)
+export RECORDER=0x...     # RECORDER_ROLE (FeeRouter or settlement service)
+export PAUSER=0x...       # PAUSER_ROLE (operations multisig — same as FeeRouter)
+export UPGRADER=0x...     # UPGRADER_ROLE (governance multisig + timelock — same as FeeRouter)
+export STABLECOIN=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913   # native Circle USDC on Base
+```
+
+```bash
+cd contracts
+forge script script/DeployRewardLedger.s.sol:DeployRewardLedger \
+  --rpc-url $RPC_URL \
+  --account deployer \
+  --broadcast \
+  --verify \
+  --etherscan-api-key $ETHERSCAN_API_KEY \
+  --verifier-url https://api.basescan.org/api \
+  -vvv
+```
+
+Expected console output:
+
+```text
+RewardLedger impl  : 0x...
+RewardLedger proxy : 0x...
+Expected addr      : 0x...
+```
+
+Record the proxy in `deployments.json` under `rewardLedger.proxies.base_usdc`.
+
+## 7. Deployed addresses (record after deploy)
 
 | Role | Address |
 |------|---------|
@@ -114,8 +151,11 @@ Record the proxy in `deployments.json` under `atlasTicket.proxies.base_usdc`.
 | FeeRouter impl | _record after deploy_ |
 | AtlasTicket proxy | _record after deploy_ |
 | AtlasTicket impl | _record after deploy_ |
+| RewardLedger proxy | _record after deploy_ |
+| RewardLedger impl | _record after deploy_ |
 | Treasury (TREASURY) | _… your value_ |
 | Admin multisig (ADMIN) | _… your value_ |
 | Upgrader multisig (UPGRADER) | _… your value_ |
 | Pauser multisig (PAUSER) | _… your value_ |
 | Minter (MINTER) | _… your value_ |
+| Recorder (RECORDER) | _… your value_ |

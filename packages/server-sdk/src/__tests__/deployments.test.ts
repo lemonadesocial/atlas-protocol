@@ -12,6 +12,8 @@ import {
   getDeploymentsRegistry,
   getFeeRouterAddress,
   getFeeRouterImplementation,
+  getRewardLedgerAddress,
+  getRewardLedgerImplementation,
   listDeployedChains,
   listKnownChains,
 } from "../deployments.js";
@@ -72,24 +74,30 @@ describe("deployments", () => {
     expect(known).toContain("tempo_testnet_usdc");
   });
 
-  describe.each([{ contract: "feeRouter" as const }, { contract: "atlasTicket" as const }])(
-    "$contract.proxies parity with CHAIN_SPECS",
-    ({ contract }) => {
-      it(`${contract}.proxies keys match Object.keys(CHAIN_SPECS) exactly`, () => {
-        const proxies = getDeploymentsRegistry()[contract].proxies;
-        const declaredChains = new Set(Object.keys(proxies));
-        const specChains = new Set(Object.keys(CHAIN_SPECS));
+  describe.each([
+    { contract: "feeRouter" as const, expectedSalt: "atlas-protocol/FeeRouter v0.1.0" },
+    { contract: "atlasTicket" as const, expectedSalt: "atlas-protocol/AtlasTicket v0.1.0" },
+    { contract: "rewardLedger" as const, expectedSalt: "atlas-protocol/RewardLedger v0.1.0" },
+  ])("$contract.proxies parity with CHAIN_SPECS", ({ contract, expectedSalt }) => {
+    it(`${contract}.proxies keys match Object.keys(CHAIN_SPECS) exactly`, () => {
+      const proxies = getDeploymentsRegistry()[contract].proxies;
+      const declaredChains = new Set(Object.keys(proxies));
+      const specChains = new Set(Object.keys(CHAIN_SPECS));
 
-        expect(declaredChains.size).toBe(specChains.size);
+      expect(declaredChains.size).toBe(specChains.size);
 
-        const inDeploymentsButNotSpecs = [...declaredChains].filter((s) => !specChains.has(s));
-        const inSpecsButNotDeployments = [...specChains].filter((s) => !declaredChains.has(s));
+      const inDeploymentsButNotSpecs = [...declaredChains].filter((s) => !specChains.has(s));
+      const inSpecsButNotDeployments = [...specChains].filter((s) => !declaredChains.has(s));
 
-        expect(inDeploymentsButNotSpecs).toEqual([]);
-        expect(inSpecsButNotDeployments).toEqual([]);
-      });
-    },
-  );
+      expect(inDeploymentsButNotSpecs).toEqual([]);
+      expect(inSpecsButNotDeployments).toEqual([]);
+    });
+
+    it(`${contract}.implementation.deployer_salt is the version-pinned literal`, () => {
+      const impl = getDeploymentsRegistry()[contract].implementation;
+      expect(impl.deployer_salt).toBe(expectedSalt);
+    });
+  });
 
   describe("with patched deployments.json on disk", () => {
     let backupPath: string;
@@ -237,6 +245,92 @@ describe("deployments", () => {
         __resetDeploymentsCacheForTests();
 
         expect(getAtlasTicketImplementation()).toBe("0xfeedfacefeedfacefeedfacefeedfacefeedface");
+      });
+    });
+  });
+
+  describe("rewardLedger", () => {
+    it("getRewardLedgerAddress returns undefined for chains with null proxy", () => {
+      expect(getRewardLedgerAddress("base_usdc")).toBeUndefined();
+      expect(getRewardLedgerAddress("base_sepolia_usdc")).toBeUndefined();
+      expect(getRewardLedgerAddress("optimism_sepolia_usdc")).toBeUndefined();
+    });
+
+    it("getRewardLedgerAddress returns undefined for unknown chain slugs", () => {
+      expect(getRewardLedgerAddress("not_a_real_chain")).toBeUndefined();
+    });
+
+    it("getRewardLedgerImplementation returns undefined initially", () => {
+      expect(getRewardLedgerImplementation()).toBeUndefined();
+    });
+
+    it("getDeploymentsRegistry exposes the RewardLedger deployer salt", () => {
+      const registry = getDeploymentsRegistry();
+      expect(registry.rewardLedger.implementation.deployer_salt).toBe(
+        "atlas-protocol/RewardLedger v0.1.0",
+      );
+    });
+
+    describe("with patched deployments.json on disk", () => {
+      let backupPath: string;
+
+      beforeEach(() => {
+        backupPath = join(
+          tmpdir(),
+          `atlas-deployments-backup-reward-${Date.now()}-${Math.random().toString(36).slice(2)}.json`,
+        );
+        copyFileSync(REPO_ROOT_PATH, backupPath);
+      });
+
+      afterEach(() => {
+        copyFileSync(backupPath, REPO_ROOT_PATH);
+        __resetDeploymentsCacheForTests();
+      });
+
+      it("getRewardLedgerAddress returns the patched proxy after re-reading the file", () => {
+        const original = JSON.parse(readFileSync(REPO_ROOT_PATH, "utf8")) as {
+          rewardLedger: { proxies: Record<string, string | null> };
+        };
+        const patched = {
+          ...original,
+          rewardLedger: {
+            ...original.rewardLedger,
+            proxies: {
+              ...original.rewardLedger.proxies,
+              arbitrum_sepolia_usdc: "0x3333333333333333333333333333333333333333",
+            },
+          },
+        };
+        writeFileSync(REPO_ROOT_PATH, JSON.stringify(patched, null, 2) + "\n", "utf8");
+
+        __resetDeploymentsCacheForTests();
+
+        expect(getRewardLedgerAddress("arbitrum_sepolia_usdc")).toBe(
+          "0x3333333333333333333333333333333333333333",
+        );
+      });
+
+      it("getRewardLedgerImplementation returns the patched address after re-reading", () => {
+        const original = JSON.parse(readFileSync(REPO_ROOT_PATH, "utf8")) as {
+          rewardLedger: {
+            implementation: { create2_address: string | null; deployer_salt: string };
+          };
+        };
+        const patched = {
+          ...original,
+          rewardLedger: {
+            ...original.rewardLedger,
+            implementation: {
+              ...original.rewardLedger.implementation,
+              create2_address: "0xbeefcafebeefcafebeefcafebeefcafebeefcafe",
+            },
+          },
+        };
+        writeFileSync(REPO_ROOT_PATH, JSON.stringify(patched, null, 2) + "\n", "utf8");
+
+        __resetDeploymentsCacheForTests();
+
+        expect(getRewardLedgerImplementation()).toBe("0xbeefcafebeefcafebeefcafebeefcafebeefcafe");
       });
     });
   });

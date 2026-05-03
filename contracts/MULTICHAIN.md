@@ -47,6 +47,24 @@ Compute the expected addresses with `forge script script/DeployAtlasTicket.s.sol
 `getAtlasTicketAddress(chainSlug)` and `getAtlasTicketImplementation()` from
 `@atlasprotocol/server-sdk`.
 
+### RewardLedger
+
+RewardLedger follows the same CREATE2 pattern with its own version-aware salt:
+`keccak256("atlas-protocol/RewardLedger v0.1.0")`. Same Nick's factory, same `ERC1967Proxy`
+runtime — so the **implementation** bytecode hash is identical across chains and the impl
+CREATE2 address is deterministic everywhere.
+
+Per-chain **proxies** differ for the same reason FeeRouter's do: `initialize()` embeds the
+chain-specific `(admin, recorder, pauser, upgrader, stablecoin)` tuple, and payouts settle in
+the chain's stablecoin. Pinning the same multisig addresses on every chain AND bridging the
+deployer to the same nonce can yield matching proxy addresses, but that is an operational
+choice — not a protocol guarantee.
+
+Compute the expected addresses with `forge script script/DeployRewardLedger.s.sol --rpc-url <rpc>`
+— both impl and proxy are logged before broadcast. SDK consumers read deployed addresses via
+`getRewardLedgerAddress(chainSlug)` and `getRewardLedgerImplementation()` from
+`@atlasprotocol/server-sdk`.
+
 ## Stablecoin-agnostic by design
 
 FeeRouter's `initialize()` accepts an ERC-20 token address — it is not hardcoded to USDC or any specific stablecoin. Each chain's deployment passes the appropriate stablecoin for that chain's operator.

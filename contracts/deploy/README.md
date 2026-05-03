@@ -1,8 +1,8 @@
-# Per-chain FeeRouter + AtlasTicket deployment runbooks
+# Per-chain FeeRouter + AtlasTicket + RewardLedger deployment runbooks
 
-One file per supported EVM chain. Each runbook documents the required env vars, the canonical stablecoin contract on that chain, the `forge script` invocations for both FeeRouter and AtlasTicket, the post-deploy verification commands, and the CREATE2 address derivation.
+One file per supported EVM chain. Each runbook documents the required env vars, the canonical stablecoin contract on that chain, the `forge script` invocations for FeeRouter, AtlasTicket, and RewardLedger, the post-deploy verification commands, and the CREATE2 address derivation.
 
-Deployment is **EVM-portable**. The same `script/Deploy.s.sol` (FeeRouter) and `script/DeployAtlasTicket.s.sol` (AtlasTicket) run against every chain; only the env vars differ. See [`MULTICHAIN.md`](../MULTICHAIN.md) for the architectural rationale.
+Deployment is **EVM-portable**. The same `script/Deploy.s.sol` (FeeRouter), `script/DeployAtlasTicket.s.sol` (AtlasTicket), and `script/DeployRewardLedger.s.sol` (RewardLedger) run against every chain; only the env vars differ. See [`MULTICHAIN.md`](../MULTICHAIN.md) for the architectural rationale.
 
 ## Index
 
@@ -40,6 +40,18 @@ export NAME="ATLAS Ticket"  # ERC-721 collection name
 export SYMBOL="ATLAS"       # ERC-721 collection symbol
 ```
 
+RewardLedger takes the same `STABLECOIN` as FeeRouter (payouts settle in the chain's
+stablecoin) plus role recipients, including a `RECORDER` role for the address allowed to
+call `recordReward(...)` — typically the FeeRouter or the operations settlement service:
+
+```bash
+export ADMIN=0x...          # DEFAULT_ADMIN_ROLE (reuse FeeRouter's value)
+export RECORDER=0x...       # RECORDER_ROLE — FeeRouter or settlement service
+export PAUSER=0x...         # PAUSER_ROLE (reuse FeeRouter's value)
+export UPGRADER=0x...       # UPGRADER_ROLE (reuse FeeRouter's value)
+export STABLECOIN=0x...     # Same ERC-20 stablecoin as FeeRouter on this chain
+```
+
 ## CREATE2 address derivation
 
 The FeeRouter deploy script computes the proxy address with:
@@ -56,6 +68,14 @@ AtlasTicket uses an analogous derivation with a different salt and initData shap
 ```text
 salt     = keccak256("atlas-protocol/AtlasTicket v0.1.0")
 initData = AtlasTicket.initialize(admin, minter, pauser, upgrader, name, symbol)
+```
+
+RewardLedger uses the same pattern with its own salt; like FeeRouter, `initData` embeds the
+chain-specific stablecoin so the proxy address is per-chain by default:
+
+```text
+salt     = keccak256("atlas-protocol/RewardLedger v0.1.0")
+initData = RewardLedger.initialize(admin, recorder, pauser, upgrader, stablecoin)
 ```
 
 > **Important:** because `initData` embeds the chain-specific `(admin, upgrader, pauser, treasury, stablecoin)` tuple AND because `impl` is created with plain `CREATE` (so its address depends on the deployer's nonce on that chain), the resulting proxy address is **NOT** byte-identical across chains by default. Two ways to make it identical when needed:
