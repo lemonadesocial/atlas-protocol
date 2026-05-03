@@ -8,6 +8,27 @@
  * attached after issuance).
  */
 
+/**
+ * Structural shape of `@atlasprotocol/ipfs`'s `Pinner` interface, copied here
+ * to avoid a circular TypeScript project reference (ipfs already references
+ * server-sdk for `AtlasEvent`). TypeScript is structural — any concrete
+ * `Pinner` from `@atlasprotocol/ipfs` satisfies this shape.
+ *
+ * Keep this in sync with `packages/ipfs/src/pinners/pinner.ts`.
+ */
+interface Pinner {
+  pinJson(
+    obj: unknown,
+    opts?: { name?: string; metadata?: Record<string, string> },
+  ): Promise<{ cid: string; size: number }>;
+  pinBytes(
+    content: Uint8Array,
+    opts?: { name?: string; metadata?: Record<string, string> },
+  ): Promise<{ cid: string; size: number }>;
+  unpin(cid: string): Promise<void>;
+  isPinned(cid: string): Promise<boolean>;
+}
+
 /** W3C VC v1 JSON-LD context. Stable, registered, public. */
 export const W3C_VC_V1_CONTEXT = "https://www.w3.org/2018/credentials/v1" as const;
 
@@ -78,6 +99,20 @@ export interface GenerateReceiptOpts {
   quantity?: number;
   /** Optional credential URI (e.g. `urn:atlas:receipt:rec_abc123`). */
   credentialId?: string;
+  /**
+   * Optional pinner. When provided, the receipt is canonicalized and pinned
+   * to IPFS in the same call; the returned CID is included in the result.
+   * Use any `@atlasprotocol/ipfs` `Pinner` (Pinata, Web3.Storage, Filebase,
+   * or self-hosted Kubo).
+   */
+  pinner?: Pinner;
+}
+
+/** Return value of {@link generateReceipt}. */
+export interface GenerateReceiptResult {
+  receipt: AtlasReceipt;
+  /** CID of the pinned receipt JSON. Present iff a pinner was supplied. */
+  cid?: string;
 }
 
 /** Settlement details embedded in `credentialSubject`. */
@@ -139,11 +174,15 @@ export interface AtlasReceiptProof {
  * unsigned; host applications attach an ES256 JWS proof block before
  * publishing.
  *
+ * When `opts.pinner` is supplied, the receipt is canonicalized and pinned to
+ * IPFS in the same call; the resulting CID is returned alongside the receipt.
+ * Otherwise only the receipt is returned (`cid` is `undefined`).
+ *
  * Validates that the rail-specific settlement field is present:
  *  - `paymentMethod === "x402"` requires `txHash` (and `settlementChain`).
  *  - `paymentMethod === "stripe_spt"` requires `paymentIntentId`.
  */
-export function generateReceipt(opts: GenerateReceiptOpts): AtlasReceipt {
+export async function generateReceipt(opts: GenerateReceiptOpts): Promise<GenerateReceiptResult> {
   if (opts.paymentMethod === "x402") {
     if (!opts.txHash) {
       throw new Error('generateReceipt: txHash is required when paymentMethod === "x402"');
@@ -215,5 +254,12 @@ export function generateReceipt(opts: GenerateReceiptOpts): AtlasReceipt {
     ...(opts.credentialId !== undefined && { id: opts.credentialId }),
   };
 
-  return receipt;
+  if (opts.pinner) {
+    const { cid } = await opts.pinner.pinJson(receipt, {
+      name: `atlas-receipt-${opts.holdId}`,
+    });
+    return { receipt, cid };
+  }
+
+  return { receipt };
 }

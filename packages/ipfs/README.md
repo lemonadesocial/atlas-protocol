@@ -53,11 +53,32 @@ All pinners implement the same `Pinner` interface:
 
 ```ts
 interface Pinner {
-  pin(content: Uint8Array, opts?: PinOptions): Promise<PinResult>;
+  pinJson(obj: unknown, opts?: PinOptions): Promise<PinResult>;
+  pinBytes(content: Uint8Array, opts?: PinOptions): Promise<PinResult>;
   unpin(cid: string): Promise<void>;
   isPinned(cid: string): Promise<boolean>;
 }
 ```
+
+### Why two methods?
+
+`pinJson` canonicalizes its input (sorted keys at every depth, no whitespace, see `canonicalize.ts`) before encoding to UTF-8 bytes and uploading. `pinBytes` pins the bytes you hand it, verbatim.
+
+Picking the right method is a **type-level correctness gate**, not just an ergonomics choice. With a single `pin(bytes)` API it is trivially possible for two callers to serialize the same logical object with different key orders and end up with different CIDs — a silent integrity-verification footgun. Splitting the API forces the decision: if you have an `object`, you want `pinJson`; if you have raw `Uint8Array`, you want `pinBytes`.
+
+### Two semantically equivalent objects → same CID
+
+```ts
+const a = { foo: 1, bar: { x: 1, y: 2 } };
+const b = { bar: { y: 2, x: 1 }, foo: 1 };
+
+const r1 = await pinner.pinJson(a);
+const r2 = await pinner.pinJson(b);
+
+r1.cid === r2.cid; // true — canonical bytes are identical
+```
+
+Equivalently, `pinJson(obj)` is exactly `pinBytes(canonicalize(obj))` with the JSON filename default applied. Use `pinBytes(canonicalize(obj))` only if you need to inspect or sign the canonical bytes yourself before upload.
 
 ### Pinata
 
@@ -65,7 +86,12 @@ interface Pinner {
 import { PinataPinner } from '@atlasprotocol/ipfs';
 
 const pinner = new PinataPinner({ jwt: process.env.PINATA_JWT! });
-const { cid, size } = await pinner.pin(payload, { name: 'event.json' });
+
+// JSON: canonicalized, then pinned. Default filename atlas-payload.json.
+const { cid, size } = await pinner.pinJson(receipt, { name: 'event.json' });
+
+// Raw bytes (e.g. an image): pinned verbatim.
+await pinner.pinBytes(imageBytes, { name: 'cover.png' });
 ```
 
 ### Web3.Storage
@@ -77,7 +103,8 @@ const pinner = new Web3StoragePinner({
   apiToken: process.env.W3UP_TOKEN!,
   spaceDID: 'did:key:...',
 });
-await pinner.pin(payload);
+await pinner.pinJson(receipt);
+await pinner.pinBytes(imageBytes, { name: 'cover.png' });
 ```
 
 ### Filebase
@@ -89,7 +116,8 @@ const pinner = new FilebasePinner({
   apiToken: process.env.FILEBASE_TOKEN!,
   bucket: 'atlas-events',
 });
-await pinner.pin(payload);
+await pinner.pinJson(receipt);
+await pinner.pinBytes(imageBytes, { name: 'cover.png' });
 ```
 
 ### Kubo (self-hosted)
@@ -98,7 +126,8 @@ await pinner.pin(payload);
 import { KuboPinner } from '@atlasprotocol/ipfs';
 
 const pinner = new KuboPinner({ apiUrl: 'http://localhost:5001' });
-await pinner.pin(payload);
+await pinner.pinJson(receipt);
+await pinner.pinBytes(imageBytes, { name: 'cover.png' });
 ```
 
 ## Determinism guarantee

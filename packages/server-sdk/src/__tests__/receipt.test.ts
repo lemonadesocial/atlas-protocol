@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+import type { PinOptions, PinResult, Pinner } from "@atlasprotocol/ipfs";
 
 import {
   ATLAS_CREDENTIALS_V1_CONTEXT,
@@ -18,8 +20,8 @@ const BASE_OPTS = {
 } as const;
 
 describe("generateReceipt — x402 rail", () => {
-  it("emits a W3C VC with the AtlasTicketReceipt type and x402 settlement fields", () => {
-    const receipt = generateReceipt({
+  it("emits a W3C VC with the AtlasTicketReceipt type and x402 settlement fields", async () => {
+    const { receipt } = await generateReceipt({
       ...BASE_OPTS,
       paymentMethod: "x402",
       txHash: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
@@ -46,8 +48,8 @@ describe("generateReceipt — x402 rail", () => {
     expect(receipt.proof).toBeUndefined();
   });
 
-  it("propagates ticketTypeId and quantity into credentialSubject when supplied", () => {
-    const receipt = generateReceipt({
+  it("propagates ticketTypeId and quantity into credentialSubject when supplied", async () => {
+    const { receipt } = await generateReceipt({
       ...BASE_OPTS,
       paymentMethod: "x402",
       txHash: "0x" + "f".repeat(64),
@@ -62,30 +64,30 @@ describe("generateReceipt — x402 rail", () => {
     expect(receipt.credentialSubject.quantity).toBe(2);
   });
 
-  it("throws when txHash is missing on x402 rail", () => {
-    expect(() =>
+  it("throws when txHash is missing on x402 rail", async () => {
+    await expect(
       generateReceipt({
         ...BASE_OPTS,
         paymentMethod: "x402",
         settlementChain: "base",
       } as never),
-    ).toThrow(/txHash is required/);
+    ).rejects.toThrow(/txHash is required/);
   });
 
-  it("throws when settlementChain is missing on x402 rail", () => {
-    expect(() =>
+  it("throws when settlementChain is missing on x402 rail", async () => {
+    await expect(
       generateReceipt({
         ...BASE_OPTS,
         paymentMethod: "x402",
         txHash: "0x" + "0".repeat(64),
       } as never),
-    ).toThrow(/settlementChain is required/);
+    ).rejects.toThrow(/settlementChain is required/);
   });
 });
 
 describe("generateReceipt — stripe_spt rail", () => {
-  it("emits a W3C VC with stripe settlement fields and no chain/tx_hash", () => {
-    const receipt = generateReceipt({
+  it("emits a W3C VC with stripe settlement fields and no chain/tx_hash", async () => {
+    const { receipt } = await generateReceipt({
       ...BASE_OPTS,
       paymentMethod: "stripe_spt",
       paymentIntentId: "pi_test_123",
@@ -103,19 +105,19 @@ describe("generateReceipt — stripe_spt rail", () => {
     expect(receipt.credentialSubject.settlement.chain).toBeUndefined();
   });
 
-  it("throws when paymentIntentId is missing on stripe rail", () => {
-    expect(() =>
+  it("throws when paymentIntentId is missing on stripe rail", async () => {
+    await expect(
       generateReceipt({
         ...BASE_OPTS,
         paymentMethod: "stripe_spt",
       } as never),
-    ).toThrow(/paymentIntentId is required/);
+    ).rejects.toThrow(/paymentIntentId is required/);
   });
 });
 
 describe("generateReceipt — JSON round-trip", () => {
-  it("survives JSON.parse(JSON.stringify(receipt)) byte-for-byte", () => {
-    const receipt = generateReceipt({
+  it("survives JSON.parse(JSON.stringify(receipt)) byte-for-byte", async () => {
+    const { receipt } = await generateReceipt({
       ...BASE_OPTS,
       paymentMethod: "x402",
       txHash: "0x" + "1".repeat(64),
@@ -135,9 +137,9 @@ describe("generateReceipt — JSON round-trip", () => {
 });
 
 describe("generateReceipt — defaults", () => {
-  it("defaults issuanceDate to the current ISO timestamp when omitted", () => {
+  it("defaults issuanceDate to the current ISO timestamp when omitted", async () => {
     const before = Date.now();
-    const receipt = generateReceipt({
+    const { receipt } = await generateReceipt({
       holdId: "h",
       eventId: "e",
       attendee: "0x",
@@ -164,7 +166,7 @@ describe("generateReceipt — required field validation", () => {
     "eventId",
     "holdId",
   ] as const) {
-    it(`throws when ${field} is empty`, () => {
+    it(`throws when ${field} is empty`, async () => {
       const opts = {
         ...BASE_OPTS,
         paymentMethod: "x402" as const,
@@ -172,7 +174,72 @@ describe("generateReceipt — required field validation", () => {
         settlementChain: "base",
         [field]: "",
       };
-      expect(() => generateReceipt(opts)).toThrow(new RegExp(`${field} is required`));
+      await expect(generateReceipt(opts)).rejects.toThrow(new RegExp(`${field} is required`));
     });
   }
+});
+
+describe("generateReceipt — auto-pinning", () => {
+  function makeMockPinner(overrides: Partial<Pinner> = {}): {
+    pinner: Pinner;
+    pinJsonSpy: ReturnType<typeof vi.fn>;
+  } {
+    const pinJsonSpy = vi.fn(
+      (_obj: unknown, _opts?: PinOptions): Promise<PinResult> =>
+        Promise.resolve({ cid: "bafkreireceipt", size: 123 }),
+    );
+    const pinBytesSpy = vi.fn(
+      (_content: Uint8Array, _opts?: PinOptions): Promise<PinResult> =>
+        Promise.resolve({ cid: "bafkreireceipt", size: 123 }),
+    );
+    const unpinSpy = vi.fn((_cid: string): Promise<void> => Promise.resolve());
+    const isPinnedSpy = vi.fn((_cid: string): Promise<boolean> => Promise.resolve(true));
+    const pinner: Pinner = {
+      pinJson: pinJsonSpy,
+      pinBytes: pinBytesSpy,
+      unpin: unpinSpy,
+      isPinned: isPinnedSpy,
+      ...overrides,
+    };
+    return { pinner, pinJsonSpy };
+  }
+
+  const VALID_X402 = {
+    ...BASE_OPTS,
+    paymentMethod: "x402" as const,
+    txHash: "0x" + "a".repeat(64),
+    settlementChain: "base",
+  };
+
+  it("with a Pinner, returns receipt + cid and forwards canonical JSON", async () => {
+    const { pinner, pinJsonSpy } = makeMockPinner();
+    const result = await generateReceipt({ ...VALID_X402, pinner });
+
+    expect(result.cid).toBe("bafkreireceipt");
+    expect(result.receipt.credentialSubject.hold_id).toBe(BASE_OPTS.holdId);
+
+    expect(pinJsonSpy).toHaveBeenCalledTimes(1);
+    const [pinnedObj, pinOpts] = pinJsonSpy.mock.calls[0] as [unknown, PinOptions];
+    expect(pinnedObj).toBe(result.receipt);
+    expect(pinOpts).toEqual({ name: `atlas-receipt-${BASE_OPTS.holdId}` });
+  });
+
+  it("without a Pinner, returns receipt only and cid is undefined", async () => {
+    const result = await generateReceipt(VALID_X402);
+    expect(result.cid).toBeUndefined();
+    expect(result.receipt).toBeDefined();
+  });
+
+  it("auto-pinning happens after validation — invalid receipt throws BEFORE pinJson is called", async () => {
+    const { pinner, pinJsonSpy } = makeMockPinner();
+    await expect(
+      generateReceipt({
+        ...VALID_X402,
+        pinner,
+        // strip the required field to force validation failure
+        txHash: undefined,
+      } as never),
+    ).rejects.toThrow(/txHash is required/);
+    expect(pinJsonSpy).not.toHaveBeenCalled();
+  });
 });

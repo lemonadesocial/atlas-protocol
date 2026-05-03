@@ -1,3 +1,4 @@
+import { canonicalize } from "../canonicalize.js";
 import type { FetchLike, PinOptions, PinResult, Pinner } from "./pinner.js";
 
 export interface PinataPinnerConfig {
@@ -37,7 +38,13 @@ export class PinataPinner implements Pinner {
     }
   }
 
-  async pin(content: Uint8Array, opts: PinOptions = {}): Promise<PinResult> {
+  async pinJson(obj: unknown, opts: PinOptions = {}): Promise<PinResult> {
+    const bytes = canonicalize(obj);
+    const effectiveOpts: PinOptions = opts.name ? opts : { ...opts, name: "atlas-payload.json" };
+    return this.pinBytes(bytes, effectiveOpts);
+  }
+
+  async pinBytes(content: Uint8Array, opts: PinOptions = {}): Promise<PinResult> {
     const form = new FormData();
     const blob = new Blob([content], { type: "application/octet-stream" });
     const filename = opts.name ?? "atlas-payload.bin";
@@ -60,7 +67,7 @@ export class PinataPinner implements Pinner {
 
     if (!res.ok) {
       const text = await safeText(res);
-      throw new Error(`PinataPinner.pin failed: ${res.status} ${res.statusText} ${text}`);
+      throw new Error(`PinataPinner.pinBytes failed: ${res.status} ${res.statusText} ${text}`);
     }
 
     const data = (await res.json()) as { IpfsHash: string; PinSize: number };

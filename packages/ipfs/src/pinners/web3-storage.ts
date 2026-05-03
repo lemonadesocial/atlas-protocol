@@ -1,3 +1,4 @@
+import { canonicalize } from "../canonicalize.js";
 import type { FetchLike, PinOptions, PinResult, Pinner } from "./pinner.js";
 
 export interface Web3StoragePinnerConfig {
@@ -33,7 +34,13 @@ export class Web3StoragePinner implements Pinner {
     this.spaceDID = config.spaceDID;
   }
 
-  async pin(content: Uint8Array, opts: PinOptions = {}): Promise<PinResult> {
+  async pinJson(obj: unknown, opts: PinOptions = {}): Promise<PinResult> {
+    const bytes = canonicalize(obj);
+    const effectiveOpts: PinOptions = opts.name ? opts : { ...opts, name: "atlas-payload.json" };
+    return this.pinBytes(bytes, effectiveOpts);
+  }
+
+  async pinBytes(content: Uint8Array, opts: PinOptions = {}): Promise<PinResult> {
     const filename = opts.name ?? "atlas-payload.bin";
     const form = new FormData();
     form.append("file", new Blob([content], { type: "application/octet-stream" }), filename);
@@ -52,7 +59,7 @@ export class Web3StoragePinner implements Pinner {
 
     if (!res.ok) {
       const text = await safeText(res);
-      throw new Error(`Web3StoragePinner.pin failed: ${res.status} ${res.statusText} ${text}`);
+      throw new Error(`Web3StoragePinner.pinBytes failed: ${res.status} ${res.statusText} ${text}`);
     }
 
     const data = (await res.json()) as { cid: string; size?: number };
