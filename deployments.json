@@ -23,5 +23,29 @@
       "tempo_usdc": null,
       "tempo_testnet_usdc": null
     }
+  },
+  "atlasTicket": {
+    "implementation": {
+      "create2_address": null,
+      "deployer_salt": "atlas-protocol/AtlasTicket v0.1.0"
+    },
+    "proxies": {
+      "base_usdc": null,
+      "base_sepolia_usdc": null,
+      "optimism_usdc": null,
+      "optimism_sepolia_usdc": null,
+      "arbitrum_usdc": null,
+      "arbitrum_sepolia_usdc": null,
+      "polygon_usdc": null,
+      "polygon_amoy_usdc": null,
+      "zksync_usdc": null,
+      "zksync_sepolia_usdc": null,
+      "worldchain_usdc": null,
+      "worldchain_sepolia_usdc": null,
+      "megaeth_usdm": null,
+      "megaeth_testnet_usdc": null,
+      "tempo_usdc": null,
+      "tempo_testnet_usdc": null
+    }
   }
 }

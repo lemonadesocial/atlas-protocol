@@ -1,4 +1,4 @@
-# Tempo — FeeRouter deploy runbook (placeholder)
+# Tempo — FeeRouter + AtlasTicket deploy runbook (placeholder)
 
 | Field | Value |
 |-------|-------|
@@ -52,3 +52,38 @@ forge script script/Deploy.s.sol:Deploy \
 ## Verification
 
 Tempo's block explorer + verification API endpoint are not yet publicly documented. Confirm with the Tempo team and update this runbook before relying on automated verification.
+
+## AtlasTicket deploy (when ready)
+
+AtlasTicket has no stablecoin parameter — it only needs role recipients and a (name, symbol)
+pair. Use the same `ADMIN` / `PAUSER` / `UPGRADER` multisigs as FeeRouter; `MINTER` is the
+operations service that calls `mint(...)` after a successful settlement.
+
+```bash
+export ADMIN=0x...
+export MINTER=0x...
+export PAUSER=0x...
+export UPGRADER=0x...
+export NAME="ATLAS Ticket"
+export SYMBOL="ATLAS"
+```
+
+```bash
+cd contracts
+forge script script/DeployAtlasTicket.s.sol:DeployAtlasTicket \
+  --rpc-url $RPC_URL \
+  --account deployer \
+  --broadcast \
+  -vvv
+```
+
+Expected console output:
+
+```text
+AtlasTicket impl  : 0x...
+AtlasTicket proxy : 0x...
+Expected addr     : 0x...
+```
+
+Record the proxy in `deployments.json` under `atlasTicket.proxies.tempo_usdc` once Tempo's
+public mainnet ships.

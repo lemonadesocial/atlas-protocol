@@ -256,6 +256,60 @@ const Listing = AtlasEventSchema.extend({ /* additional checks */ });
 
 The schemas use `.passthrough()` so unknown ATLAS-namespaced fields (e.g. `atlas:promoted` on search results) survive validation; required fields and enums are still strictly checked.
 
+## AtlasTicket NFT helpers
+
+After a successful purchase, mint the corresponding ticket NFT with idempotent semantics —
+calling `mint(...)` twice for the same `paymentId` reverts on chain, so retried settlement
+jobs are safe by construction. The SDK ships viem-based helpers that build the calldata, parse
+the resulting log, and look up the deployed contract address.
+
+```ts
+import {
+  buildMintTicketTx,
+  getAtlasTicketContractAddress,
+  parseTicketMintedEvent,
+} from "@atlasprotocol/server-sdk";
+import { createWalletClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { base } from "viem/chains";
+
+const contract = getAtlasTicketContractAddress("base_usdc") as `0x${string}`;
+const tx = buildMintTicketTx({
+  contract,
+  to: "0x9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e",
+  eventId: 4242n,
+  paymentId: "0xabcd…", // bytes32 — same value used on the FeeRouter settle()
+  tokenURI: "ipfs://Qm…", // points at the JSON-LD ticket payload
+});
+
+const wallet = createWalletClient({
+  account: privateKeyToAccount(process.env.MINTER_PRIVATE_KEY as `0x${string}`),
+  chain: base,
+  transport: http(),
+});
+const hash = await wallet.sendTransaction(tx);
+```
+
+Decode the resulting `TicketMinted` event from the receipt to learn which `tokenId` was issued:
+
+```ts
+import { parseTicketMintedEvent } from "@atlasprotocol/server-sdk";
+
+for (const log of receipt.logs) {
+  const decoded = parseTicketMintedEvent(log);
+  if (decoded) {
+    // decoded.tokenId, decoded.to, decoded.eventId, decoded.paymentId, decoded.tokenURI
+    break;
+  }
+}
+```
+
+The contract is deployed via Nick's deterministic CREATE2 factory with salt
+`atlas-protocol/AtlasTicket v0.1.0`, so the **implementation** address is identical on every
+EVM chain. Per-chain proxy addresses live in `deployments.json` at the repo root and are
+exposed via `getAtlasTicketAddress(chainSlug)` / `getAtlasTicketContractAddress(chainSlug)`
+(both names point at the same lookup).
+
 ## Spec reference
 
 See [`../../specs/01-PROTOCOL-SPEC.md`](../../specs/01-PROTOCOL-SPEC.md) for the full ATLAS Protocol manifest format, capability list, and signing-key requirements.

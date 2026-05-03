@@ -5,6 +5,11 @@ import { fileURLToPath } from "node:url";
 /**
  * Canonical CREATE2 deployment registry for ATLAS Protocol contracts.
  *
+ * Currently tracks two contract families: `feeRouter` (Stage 1 payment
+ * settlement) and `atlasTicket` (Stage 2 ERC-721 NFT tickets). Each family
+ * has an implementation entry (a single CREATE2 address derived from a
+ * version-pinned deployer salt) plus a per-chain proxy map.
+ *
  * The source of truth is `deployments.json` at the repo root. This module
  * loads the JSON synchronously and exposes typed accessors.
  *
@@ -26,15 +31,25 @@ import { fileURLToPath } from "node:url";
  * `__resetDeploymentsCacheForTests()` between mutations.
  */
 
-export interface FeeRouterImplementation {
+export interface ContractImplementation {
   create2_address: string | null;
   deployer_salt: string;
 }
 
+/**
+ * @deprecated Use {@link ContractImplementation}. Re-exported under the old name
+ * so existing FeeRouter consumers keep compiling.
+ */
+export type FeeRouterImplementation = ContractImplementation;
+
 export interface DeploymentsRegistry {
   schema_version: string;
   feeRouter: {
-    implementation: FeeRouterImplementation;
+    implementation: ContractImplementation;
+    proxies: Record<string, string | null>;
+  };
+  atlasTicket: {
+    implementation: ContractImplementation;
     proxies: Record<string, string | null>;
   };
 }
@@ -101,7 +116,32 @@ export function getFeeRouterImplementation(): string | undefined {
 }
 
 /**
- * Returns chain slugs that have a non-null proxy address recorded.
+ * Returns the AtlasTicket UUPS proxy address for the given chain slug, or
+ * `undefined` if the chain has no recorded deployment yet.
+ *
+ * Chain slugs match `Object.keys(CHAIN_SPECS)` in `chain-specs.ts`
+ * (snake_case, e.g. `base_usdc`, `arbitrum_sepolia_usdc`).
+ */
+export function getAtlasTicketAddress(chainSlug: string): string | undefined {
+  const proxy = getRegistry().atlasTicket.proxies[chainSlug];
+  return proxy ?? undefined;
+}
+
+/**
+ * Returns the AtlasTicket implementation contract's CREATE2 address, or
+ * `undefined` if the implementation has not yet been deployed.
+ *
+ * The implementation is deterministic across all EVM chains (same bytecode,
+ * same deployer salt). The proxies pointing at it are per-chain because
+ * `initialize()` embeds chain-specific role assignments and the (name,
+ * symbol) pair.
+ */
+export function getAtlasTicketImplementation(): string | undefined {
+  return getRegistry().atlasTicket.implementation.create2_address ?? undefined;
+}
+
+/**
+ * Returns chain slugs that have a non-null FeeRouter proxy address recorded.
  */
 export function listDeployedChains(): string[] {
   return Object.entries(getRegistry().feeRouter.proxies)
@@ -113,6 +153,9 @@ export function listDeployedChains(): string[] {
  * Returns every chain slug declared in `deployments.json` — both deployed
  * and not-yet-deployed. Useful for "what chains does ATLAS plan to support"
  * enumeration.
+ *
+ * The slug list is read from `feeRouter.proxies`; the parity test guarantees
+ * `atlasTicket.proxies` has the same key set.
  */
 export function listKnownChains(): string[] {
   return Object.keys(getRegistry().feeRouter.proxies);

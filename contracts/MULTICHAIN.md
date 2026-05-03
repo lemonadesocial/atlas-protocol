@@ -28,6 +28,25 @@ The **implementation** contract address is deterministic across chains by constr
 
 Compute the expected addresses before deployment with `forge script script/Deploy.s.sol --rpc-url <rpc>` — both are logged before broadcast. The canonical registry of deployed proxy addresses is [`deployments.json`](../deployments.json) at the repo root; SDK consumers read it via `getFeeRouterAddress(chainSlug)` and `getFeeRouterImplementation()` from `@atlasprotocol/server-sdk`.
 
+### AtlasTicket
+
+AtlasTicket follows the same CREATE2 pattern with its own version-aware salt:
+`keccak256("atlas-protocol/AtlasTicket v0.1.0")`. Same Nick's factory, same `ERC1967Proxy`
+runtime — so the **implementation** bytecode hash is identical across chains and the impl
+CREATE2 address is deterministic everywhere.
+
+Per-chain **proxies** still differ because `initialize()` embeds chain-specific role
+recipients and the (name, symbol) pair. **Crucially, AtlasTicket does NOT take a stablecoin
+parameter** — the contract is pure NFT issuance, with no on-chain payment leg. That makes
+proxy-address parity easier than FeeRouter's: pin the same `(admin, minter, pauser, upgrader)`
+multisigs and the same `(name, symbol)` literal across chains and the proxy address matches
+without needing to bridge deployer nonces.
+
+Compute the expected addresses with `forge script script/DeployAtlasTicket.s.sol --rpc-url <rpc>`
+— both impl and proxy are logged before broadcast. SDK consumers read deployed addresses via
+`getAtlasTicketAddress(chainSlug)` and `getAtlasTicketImplementation()` from
+`@atlasprotocol/server-sdk`.
+
 ## Stablecoin-agnostic by design
 
 FeeRouter's `initialize()` accepts an ERC-20 token address — it is not hardcoded to USDC or any specific stablecoin. Each chain's deployment passes the appropriate stablecoin for that chain's operator.
