@@ -1,6 +1,6 @@
 {
   "name": "@atlasprotocol/types",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Shared TypeScript type definitions for the ATLAS Protocol — events, ticket types, manifests, purchase challenges, W3C VC receipts, and IPFS pinner abstractions.",
   "license": "MIT",
   "repository": {
