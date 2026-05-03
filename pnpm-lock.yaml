@@ -126,6 +126,9 @@ importers:
 
   examples/dual-protocol-server:
     dependencies:
+      '@atlasprotocol/ipfs':
+        specifier: workspace:*
+        version: link:../../packages/ipfs
       '@atlasprotocol/mpp':
         specifier: workspace:*
         version: link:../../packages/mpp

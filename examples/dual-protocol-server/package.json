@@ -19,6 +19,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@atlasprotocol/ipfs": "workspace:*",
     "@atlasprotocol/mpp": "workspace:*",
     "@atlasprotocol/server-sdk": "workspace:*",
     "@hono/node-server": "^1.13.0",

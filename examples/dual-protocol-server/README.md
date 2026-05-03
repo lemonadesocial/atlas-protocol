@@ -93,6 +93,52 @@ cp .env.example .env
 pnpm dev
 ```
 
+## Optional on-chain + IPFS integration
+
+The example wires the post-settlement integration steps end-to-end behind env vars: minting an AtlasTicket NFT, recording an organizer reward in the RewardLedger, and pinning the W3C VC receipt to IPFS. **All three are independently optional.** When the corresponding env var is missing, the example logs a warning and the response carries a `skipped` reason instead of failing — so the example is runnable locally without any on-chain or pinning credentials.
+
+| Env var | Role |
+|---------|------|
+| `ATLAS_TICKET_ADDRESS` | AtlasTicket proxy address on the settlement chain. Pull from [`deployments.json`](../../deployments.json) once your chain is deployed. Required to mint. |
+| `REWARD_LEDGER_ADDRESS` | RewardLedger proxy address on the settlement chain. Required to credit the organizer reward. |
+| `WALLET_PRIVATE_KEY` | Server-side signer. MUST hold the MINTER role on AtlasTicket and the RECORDER role on RewardLedger. |
+| `RPC_URL` | viem transport for the settlement chain. |
+| `SETTLEMENT_CHAIN_NAME` | Display name embedded in the receipt's `settlement.chain` field. Defaults to `base`. |
+| `PINATA_JWT` | Pinata JWT — when set, the receipt is pinned to Pinata and the returned CID surfaces in the response body. |
+| `WEB3_STORAGE_TOKEN` + `WEB3_STORAGE_SPACE_DID` | Alternative pinner. Used only when `PINATA_JWT` is not set. |
+
+See [`./.env.example`](./.env.example) for the complete list with comments.
+
+### Full purchase flow with `curl`
+
+```bash
+# 1. Issue the challenge (no Authorization → server returns 402).
+curl -i -X POST http://localhost:4001/atlas/v1/events/evt_jazz_brooklyn_001/purchase \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"ticket_type_id":"tt_ga_001","quantity":1}'
+
+# 2. The agent settles the challenge off-band (on-chain transfer or Stripe
+#    PaymentIntent confirmation), then re-presents the same request with
+#    Authorization: MPP <wire>:
+curl -i -X POST http://localhost:4001/atlas/v1/events/evt_jazz_brooklyn_001/purchase \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -H "Authorization: MPP <base64url-credential-from-the-402-challenge>" \
+  -d '{"ticket_type_id":"tt_ga_001","quantity":1}'
+
+# 3. The 200 response carries the receipt + (when configured) cid + ticket
+#    + reward tx hashes:
+# {
+#   "atlas:status": "confirmed",
+#   "atlas:settlement": { ... },
+#   "atlas:ticket":  { "tokenId": "1", "txHash": "0x..." } | { "skipped": "..." },
+#   "atlas:reward":  { "amount": "1000000", "recipient": "0x...", "txHash": "0x..." } | { "skipped": "..." },
+#   "atlas:receipt": { /* W3C VC */ },
+#   "atlas:cid":     "bafkrei..." | null
+# }
+```
+
 ## Adapting this pattern to your own DB
 
 The four routes are intentionally small. To plug your own platform in:
@@ -102,12 +148,11 @@ The four routes are intentionally small. To plug your own platform in:
 3. Wire `STRIPE_SECRET_KEY` to your existing Stripe account if you want to keep accepting fiat.
 4. Add real auth (the example skips API-key validation — production would check a Bearer token or session cookie before issuing the challenge).
 5. Keep idempotency-key handling (the example stores it in-memory; production must use the same store as your hold table so retries return the same hold).
-6. Persist the credential after settlement and use it as your offline-verifiable receipt (the example logs settlement metadata but does not yet emit a W3C VC — see SCHEMAS.md §5 for the receipt shape).
+6. Set `ATLAS_TICKET_ADDRESS`, `REWARD_LEDGER_ADDRESS`, and `PINATA_JWT` (or the Web3.Storage pair) to enable the on-chain mint + reward + pinned-receipt integration the example performs.
 
 ## What this example does NOT do (yet)
 
-- **Live Stripe/chain calls.** The verifier paths are wired (`verifyPayment`, `verifyStripePayment`), but no actual chain RPC or live Stripe API is invoked at startup — purchases use whatever the credential carries. Try with the agent-dual-client example for an end-to-end loop.
-- **W3C VC receipts.** The 200-OK confirmation surfaces settlement metadata; it doesn't yet sign a receipt. That's a follow-up alongside the AtlasTicket NFT work.
-- **Replay protection.** The MPP credential layer doesn't yet pin a nonce store. Production deployments must add one.
+- **Replay protection on the MPP credential layer.** The SDK's `verifyMppCredential` + `InMemoryReplayStore` are available; production deployments should wire them in.
 - **Multi-tenancy.** Each instance speaks for one platform. If you're hosting many platforms, deploy one instance per platform domain (matches the "well-known per origin" model in `01-PROTOCOL-SPEC.md`).
 - **Auth.** The example accepts any request. Add API key / OAuth / session validation before using in production.
+- **Receipt signing.** `generateReceipt` returns an unsigned W3C VC; the example does not attach an ES256 JWS proof block. Sign with a key listed in the platform's `signing_keys` manifest before publishing.

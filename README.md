@@ -89,17 +89,25 @@ CONTRACTS            FeeRouter + AtlasTicket + RewardLedger + RegistryPointer + 
 
 ## Quick start for event platforms
 
-Any event platform can install three packages and accept agent purchases over both rails out of the box: discoverable from any agent surface (Claude / ChatGPT / Gemini / your own), settled either on-chain (multi-L2 USDC via x402) or in fiat (Stripe SPT, USDC out).
+Any event platform can install a few packages and accept agent purchases over both rails out of the box: discoverable from any agent surface (Claude / ChatGPT / Gemini / your own), settled either on-chain (multi-L2 USDC via x402) or in fiat (Stripe SPT, USDC out), with the buyer's W3C VC receipt pinned to IPFS.
 
 ```bash
-npm install @atlasprotocol/server-sdk @atlasprotocol/agent-tools @atlasprotocol/mpp
-# Plus the SDKs you actually call:
-npm install stripe viem
+# Server-side primitives + IPFS pinners (peer dep — only needed if you opt
+# into receipt auto-pinning):
+pnpm add @atlasprotocol/server-sdk @atlasprotocol/ipfs viem hono
+# Optional, only when accepting fiat:
+pnpm add stripe
 ```
 
-Wire your purchase route to issue a 402 with `generateMppChallenge` and verify the retry credential with `verifyPayment` (on-chain) or `verifyStripePayment` (fiat). The reference implementation in [`examples/dual-protocol-server/`](./examples/dual-protocol-server/) is a complete Hono service with all four ATLAS endpoints (`/.well-known/atlas.json`, `/atlas/v1/search`, `/atlas/v1/events/:id`, `/atlas/v1/events/:id/purchase`); copy its four route handlers into your existing service and swap `src/data.ts` for whatever your event database is.
+1. **Copy the reference server.** [`examples/dual-protocol-server/`](./examples/dual-protocol-server/) is a complete Hono service with all four ATLAS endpoints (`/.well-known/atlas.json`, `/atlas/v1/search`, `/atlas/v1/events/:id`, `/atlas/v1/events/:id/purchase`). Use it as your starter: copy the four route handlers into your existing service and swap [`src/data.ts`](./examples/dual-protocol-server/src/data.ts) for whatever wraps your event database.
+2. **Set environment variables.** See [`examples/dual-protocol-server/.env.example`](./examples/dual-protocol-server/.env.example) for the complete list — at minimum `ORGANIZER_ADDRESS`, `STRIPE_SECRET_KEY` (if accepting fiat), and the optional integration block (`ATLAS_TICKET_ADDRESS`, `REWARD_LEDGER_ADDRESS`, `WALLET_PRIVATE_KEY`, `RPC_URL`, `PINATA_JWT`) when you're ready to wire the on-chain mint + reward + receipt-pinning steps.
+3. **Deploy contracts on your settlement chain.** Each chain has its own runbook in [`contracts/deploy/`](./contracts/deploy/) — required env vars, canonical stablecoin contract, `forge script` invocation, post-deploy verification command. The proxies write back into [`deployments.json`](./deployments.json) which the SDK accessors then read.
+4. **Wire the endpoints.** The example performs the full composition — issue a 402 with `generateMppChallenge`, verify the retry credential with `verifyPayment` / `verifyStripePayment`, mint the AtlasTicket NFT with `buildMintTicketTx`, credit the organizer reward with `buildRecordRewardTx`, and pin the W3C VC receipt with `generateReceipt({ ..., pinner })`. See [`examples/dual-protocol-server/src/index.ts`](./examples/dual-protocol-server/src/index.ts) for the end-to-end flow.
+5. **(Agent side.)** For the agent side of the same flow, see [`examples/agent-dual-client/`](./examples/agent-dual-client/) — it pays the 402 with x402 if a wallet is configured and falls back to stripe-mpp if a Stripe key is.
 
-For the agent side of the same flow, see [`examples/agent-dual-client/`](./examples/agent-dual-client/) — it pays the 402 with x402 if a wallet is configured and falls back to stripe-mpp if a Stripe key is.
+> **Breaking change in 0.4.0.** `generateReceipt` is now `async` and returns `{ receipt, cid? }`. The optional `pinner` parameter is the new pluggable IPFS pinner (`@atlasprotocol/ipfs`). Migrate by adding `await` and destructuring the result.
+
+The cross-cutting invariants (paymentId carries unchanged through verify → mint → reward → receipt; replays are rejected; pinner is called exactly once) are exercised by [`packages/server-sdk/src/__tests__/end-to-end.test.ts`](./packages/server-sdk/src/__tests__/end-to-end.test.ts), which composes the same SDK primitives the example server uses.
 
 ## Quick reference
 
