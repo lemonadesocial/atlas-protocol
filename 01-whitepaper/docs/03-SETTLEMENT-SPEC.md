@@ -6,9 +6,17 @@
 
 ## 1. Design Principle
 
-ATLAS deploys identical Solidity contracts to every supported EVM chain. The contract source, constructor parameters, and compiler version are the same across all deployments. An organizer selects a settlement chain when creating an event. That choice is stored in the listing's `atlas:settlement.chains` array. Agents read the chain from the listing and route payment to the correct FeeRouter deployment.
+ATLAS deploys identical Solidity contracts to every supported EVM chain. The contract source, constructor parameters (other than the per-chain stablecoin token address), and compiler version are the same across all deployments. An organizer selects a settlement chain when creating an event. That choice is stored in the listing's `atlas:settlement.chains` array. Agents read the chain from the listing and route payment to the correct FeeRouter deployment.
 
-No chain-specific logic exists in the contracts. The same bytecode runs on Base, Arbitrum, Ethereum L1, World Chain, and MegaETH. If a new chain launches with EVM compatibility and USDC liquidity, ATLAS can deploy to it without modifying the protocol.
+No chain-specific logic exists in the contracts. The same bytecode runs on Base, Optimism, Arbitrum, Polygon, Ethereum L1, World Chain, MegaETH, and Tempo. If a new chain launches with EVM compatibility and a USDC- or USDM-class stablecoin, ATLAS can deploy to it without modifying the protocol.
+
+Three deployment axes are independent and MUST NOT be conflated:
+
+- **Settlement chain** — the chain the buyer sends stablecoin to and FeeRouter executes on. Per-event, organizer-selected.
+- **NFT chain** — the chain AtlasTicket ERC-721 tokens are minted on. May differ from the settlement chain for cost or composability reasons.
+- **Reward chain** — the canonical chain for RewardLedger accruals. **Base + USDC** is the canonical reward chain in v1; multi-chain reward accrual lands in Phase 7+ (see [10-PROGRESSIVE-DECENTRALIZATION](./10-PROGRESSIVE-DECENTRALIZATION.md)).
+
+A purchase can therefore settle on Optimism (USDC), mint a ticket on Base (cheaper NFT chain), and accrue rewards on Base — three distinct on-chain interactions per sale.
 
 ```bash
 # Organizer creates an event and selects Base for settlement
@@ -42,6 +50,23 @@ The `--chain` flag writes `"atlas:settlement.chains": ["base"]` into the listing
 Base is the default recommendation for most organizers: low fees, 2-second finality, native USDC, and broad wallet support. Ethereum L1 is available for high-value settlements where mainnet security justifies the gas cost. World Chain is optimal when Sybil resistance matters (verified humans receive gas subsidies and boosted reward rates). Tempo and MegaETH are flagged experimental in the SDK's `CHAIN_SPECS` (`experimental: true`) and MUST be opted into explicitly — they are not in the SDK's default accepted-chains list.
 
 Each chain also has a corresponding testnet entry in the SDK (`base_sepolia_usdc`, `optimism_sepolia_usdc`, `arbitrum_sepolia_usdc`, `polygon_amoy_usdc`, `zksync_sepolia_usdc`, `worldchain_sepolia_usdc`, `megaeth_testnet_usdc`, `tempo_testnet_usdc`). Testnets whose canonical USDC contract has not yet been published by Circle ship with a placeholder zero address and `experimental: true`. Verified addresses live in [`packages/server-sdk/src/chain-specs.ts`](../../packages/server-sdk/src/chain-specs.ts); deployed FeeRouter proxies live in [`deployments.json`](../../deployments.json) at the repo root and are read by the SDK helpers `getFeeRouterAddress(chainSlug)` / `listDeployedChains()`.
+
+### 2.1 Per-Chain Stablecoin Parameters
+
+The settlement contract's constructor accepts the chain's canonical stablecoin token address. ATLAS is stablecoin-agnostic at initialization: any ERC-20 stablecoin with `decimals = 6` (USDC convention) MAY be used. Per-chain defaults:
+
+| Chain | Stablecoin | Token Symbol | Notes |
+|-------|------------|--------------|-------|
+| Base | USDC | `USDC` | Native Circle deployment |
+| Optimism | USDC | `USDC` | Native Circle deployment |
+| Arbitrum | USDC | `USDC` | Native Circle deployment |
+| Polygon | USDC | `USDC` | Native Circle deployment |
+| Ethereum L1 | USDC | `USDC` | Native Circle deployment |
+| World Chain | USDC | `USDC` | Canonical bridge from L1 |
+| MegaETH | USDM | `USDM` | M^0-issued, settles in <10 ms |
+| Tempo | USDC (Tempo-native) | `USDC` | Stripe-Tempo native issuance |
+
+Organizers selecting MegaETH receive USDM-denominated payouts. Organizers MAY configure a Stripe-SPT or off-chain swap layer to convert MegaETH USDM → Base USDC if their accounting flow expects USDC. The protocol does not perform automatic cross-stablecoin conversion at the contract level.
 
 ---
 
@@ -161,6 +186,37 @@ Receipt (W3C Verifiable Credential) issued to attendee
 ```
 
 For direct USDC payments, the flow skips Stripe entirely. The agent calls `FeeRouter.settle()` with the USDC amount, and the contract executes the split on-chain in a single transaction.
+
+The 2% fee math above is illustrative for Phase 4 contracts. **Phase 5 contracts use a 0.5% protocol fee** with stacked platform fees represented as a `FeeSplit[]` array passed to `settle()` (see Section 6.5 and [04-SMART-CONTRACTS-SPEC §3](./04-SMART-CONTRACTS-SPEC.md#3-feeroutersol)).
+
+### 6.5 Stacked Platform Fees (FeeSplit)
+
+Phase 5 introduces a stacked fee model. The settlement payload includes a `FeeSplit[]` array of `{recipient, amount}` pairs that FeeRouter forwards atomically. Typical layering for a Lemonade-hosted Space:
+
+```
+FeeSplit[0]: { recipient: ATLAS_TREASURY,            amount: 0.5% }   // protocol fee — fixed
+FeeSplit[1]: { recipient: LEMONADE_META_FEE_WALLET,  amount: 1.0% }   // Lemonade meta-fee
+FeeSplit[2]: { recipient: SPACE_PLATFORM_WALLET,     amount: 2.0% }   // Space platform fee
+// remainder routes to organizer
+```
+
+For an external platform (e.g. an Eventbrite Org served via the connector), the Lemonade meta-fee MAY be omitted; the array contains only the protocol fee and the platform's own service fee. Constraints enforced on-chain:
+
+- `MAX_TOTAL_PLATFORM_FEES_BPS = 2000` (20%) — sum of all `FeeSplit[i].amount` (excluding the protocol fee) MUST NOT exceed 20% of ticket price.
+- `MIN_ORGANIZER_BPS = 7000` (70%) — organizer's share of the gross MUST be at least 70% after all FeeSplit deductions and the protocol fee.
+
+Constraint violations revert the transaction. Fee economics, including the three checkout modes (organizer-absorbs, buyer-pays-on-top, configurable-split), are normatively defined in [09-FEE-ECONOMICS-SPEC](./09-FEE-ECONOMICS-SPEC.md).
+
+### 6.6 Refund Flow (`reverseSettle`)
+
+`FeeRouter.reverseSettle(holdId)` reverses an executed settlement. Refund mechanics:
+
+- **ATLAS protocol fee (0.5%) is always retained** by the protocol treasury and is NOT reversed. Cancelled events still consumed protocol resources (registry storage, signatures, IPFS pinning).
+- **Lemonade meta-fee and Space platform fee** are configurable per-platform: each `FeeSplit` recipient declares a `retain_on_refund` boolean in their on-chain platform config. Default is `false` (refunded).
+- **Organizer share is fully reversed** to the buyer.
+- **Stablecoin source matters**: refund returns the same stablecoin on the same chain the buyer paid in. Cross-chain or cross-stablecoin refunds are out of scope at the contract layer.
+
+`RewardLedger.reverseRewards(holdId)` reverses any reward accruals tied to the refunded sale. Accruals still inside the 14-day timelock are deleted; accruals already claimed are clawed back via a debit-balance mechanism on the participant's next claim. See [04-SMART-CONTRACTS-SPEC §5](./04-SMART-CONTRACTS-SPEC.md#5-rewardledgersol).
 
 ---
 
