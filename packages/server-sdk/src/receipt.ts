@@ -9,12 +9,14 @@
  */
 
 /**
- * Structural shape of `@atlasprotocol/ipfs`'s `Pinner` interface, copied here
- * to avoid a circular TypeScript project reference (ipfs already references
- * server-sdk for `AtlasEvent`). TypeScript is structural — any concrete
- * `Pinner` from `@atlasprotocol/ipfs` satisfies this shape.
- *
- * Keep this in sync with `packages/ipfs/src/pinners/pinner.ts`.
+ * Mirrors `@atlasprotocol/ipfs`'s `Pinner` interface — keep aligned. The
+ * shape is duplicated here (rather than imported) so server-sdk does not
+ * declare a workspace link to `@atlasprotocol/ipfs`; ipfs already imports
+ * `AtlasEvent` from server-sdk, and a reverse link forms a cycle that
+ * release-please's NodeWorkspace plugin cannot resolve. TypeScript is
+ * structural — any concrete `Pinner` instance from `@atlasprotocol/ipfs`
+ * satisfies this shape, so callers wire up auto-pinning by `pnpm add
+ * @atlasprotocol/ipfs` themselves and passing the pinner instance.
  */
 interface Pinner {
   pinJson(
