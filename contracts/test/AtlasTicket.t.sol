@@ -23,6 +23,8 @@ contract AtlasTicketTest is Test {
     address internal minter = address(0xB0B);
     address internal pauser = address(0xCAFE);
     address internal upgrader = address(0xBEEF);
+    address internal burner = address(0xBA5E);
+    address internal custodial = address(0xC057);
     address internal alice = address(0xD00D);
     address internal bob = address(0xF00D);
     address internal stranger = address(0xDEAD);
@@ -37,10 +39,19 @@ contract AtlasTicketTest is Test {
 
     bytes32 internal constant PAYMENT_ID_1 = keccak256("payment-1");
     bytes32 internal constant PAYMENT_ID_2 = keccak256("payment-2");
+    bytes32 internal constant EMAIL_HASH_1 = keccak256("alice@example.com");
+    bytes32 internal constant EMAIL_HASH_NONE = bytes32(0);
 
     event TicketMinted(
-        uint256 indexed tokenId, address indexed to, uint256 indexed eventId, bytes32 paymentId, string tokenURI
+        uint256 indexed tokenId,
+        address indexed to,
+        uint256 indexed eventId,
+        bytes32 paymentId,
+        string tokenURI,
+        bytes32 emailHash
     );
+
+    event TicketBurned(uint256 indexed tokenId, bytes32 indexed paymentId);
 
     function setUp() public {
         AtlasTicket impl = new AtlasTicket();
@@ -56,10 +67,10 @@ contract AtlasTicketTest is Test {
 
     function test_mint_happyPath_emitsAndStores() public {
         vm.expectEmit(true, true, true, true, address(ticket));
-        emit TicketMinted(1, alice, EVENT_ID_1, PAYMENT_ID_1, URI_1);
+        emit TicketMinted(1, alice, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_NONE);
 
         vm.prank(minter);
-        uint256 tokenId = ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1);
+        uint256 tokenId = ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_NONE);
 
         assertEq(tokenId, 1, "first tokenId is 1");
         assertEq(ticket.ownerOf(1), alice, "owner");
@@ -67,16 +78,17 @@ contract AtlasTicketTest is Test {
         assertEq(ticket.tokenURI(1), URI_1, "uri");
         assertEq(ticket.eventIdOf(1), EVENT_ID_1, "eventId");
         assertEq(ticket.paymentIdOf(1), PAYMENT_ID_1, "paymentId");
+        assertEq(ticket.emailHashOf(1), EMAIL_HASH_NONE, "emailHash zero for self-custody mint");
         assertEq(ticket.name(), NAME, "name");
         assertEq(ticket.symbol(), SYMBOL, "symbol");
     }
 
     function test_mint_secondToken_incrementsId() public {
         vm.prank(minter);
-        ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1);
+        ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_NONE);
 
         vm.prank(minter);
-        uint256 second = ticket.mint(bob, EVENT_ID_2, PAYMENT_ID_2, URI_2);
+        uint256 second = ticket.mint(bob, EVENT_ID_2, PAYMENT_ID_2, URI_2, EMAIL_HASH_NONE);
 
         assertEq(second, 2, "second tokenId is 2");
         assertEq(ticket.ownerOf(2), bob, "second owner");
@@ -85,11 +97,11 @@ contract AtlasTicketTest is Test {
 
     function test_mint_duplicatePaymentId_reverts() public {
         vm.prank(minter);
-        uint256 first = ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1);
+        uint256 first = ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_NONE);
 
         vm.prank(minter);
         vm.expectRevert(abi.encodeWithSelector(IAtlasTicket.PaymentAlreadyMinted.selector, PAYMENT_ID_1, first));
-        ticket.mint(bob, EVENT_ID_2, PAYMENT_ID_1, URI_2);
+        ticket.mint(bob, EVENT_ID_2, PAYMENT_ID_1, URI_2, EMAIL_HASH_NONE);
     }
 
     function test_mint_unauthorized_reverts() public {
@@ -98,19 +110,19 @@ contract AtlasTicketTest is Test {
             abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, stranger, minterRole)
         );
         vm.prank(stranger);
-        ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1);
+        ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_NONE);
     }
 
     function test_mint_zeroTo_reverts() public {
         vm.prank(minter);
         vm.expectRevert(IAtlasTicket.ZeroAddress.selector);
-        ticket.mint(address(0), EVENT_ID_1, PAYMENT_ID_1, URI_1);
+        ticket.mint(address(0), EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_NONE);
     }
 
     function test_mint_emptyTokenURI_reverts() public {
         vm.prank(minter);
         vm.expectRevert(IAtlasTicket.EmptyTokenURI.selector);
-        ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, "");
+        ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, "", EMAIL_HASH_NONE);
     }
 
     function test_mint_paused_reverts() public {
@@ -119,19 +131,19 @@ contract AtlasTicketTest is Test {
 
         vm.prank(minter);
         vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
-        ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1);
+        ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_NONE);
 
         vm.prank(pauser);
         ticket.unpause();
 
         vm.prank(minter);
-        uint256 tokenId = ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1);
+        uint256 tokenId = ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_NONE);
         assertEq(tokenId, 1, "mint succeeds after unpause");
     }
 
     function test_transfer_paused_reverts() public {
         vm.prank(minter);
-        ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1);
+        ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_NONE);
 
         vm.prank(pauser);
         ticket.pause();
@@ -139,6 +151,102 @@ contract AtlasTicketTest is Test {
         vm.prank(alice);
         vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
         ticket.safeTransferFrom(alice, bob, 1);
+    }
+
+    // ---------------------------------------------------------------------
+    // burn
+    // ---------------------------------------------------------------------
+
+    function _grantBurner() internal {
+        bytes32 burnerRole = ticket.BURNER_ROLE();
+        vm.prank(admin);
+        ticket.grantRole(burnerRole, burner);
+    }
+
+    function test_Burn_HappyPath() public {
+        _grantBurner();
+
+        vm.prank(minter);
+        uint256 tokenId = ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_NONE);
+        assertEq(ticket.ownerOf(tokenId), alice, "ownership before burn");
+
+        vm.expectEmit(true, true, false, false, address(ticket));
+        emit TicketBurned(tokenId, PAYMENT_ID_1);
+
+        vm.prank(burner);
+        ticket.burn(tokenId, PAYMENT_ID_1);
+
+        // Token no longer exists — view reverts.
+        vm.expectRevert(abi.encodeWithSelector(IAtlasTicket.TokenNotMinted.selector, tokenId));
+        ticket.tokenURI(tokenId);
+    }
+
+    function test_Burn_RevertsWithoutRole() public {
+        vm.prank(minter);
+        uint256 tokenId = ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_NONE);
+
+        bytes32 burnerRole = ticket.BURNER_ROLE();
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, stranger, burnerRole)
+        );
+        vm.prank(stranger);
+        ticket.burn(tokenId, PAYMENT_ID_1);
+
+        // Even the minter cannot burn — BURNER_ROLE is distinct from MINTER_ROLE.
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, minter, burnerRole)
+        );
+        vm.prank(minter);
+        ticket.burn(tokenId, PAYMENT_ID_1);
+    }
+
+    function test_Burn_RevertsForNonexistentToken() public {
+        _grantBurner();
+
+        vm.prank(burner);
+        vm.expectRevert(abi.encodeWithSelector(IAtlasTicket.TokenNotMinted.selector, uint256(99)));
+        ticket.burn(99, PAYMENT_ID_1);
+    }
+
+    function test_Burn_paused_reverts() public {
+        _grantBurner();
+
+        vm.prank(minter);
+        uint256 tokenId = ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_NONE);
+
+        vm.prank(pauser);
+        ticket.pause();
+
+        vm.prank(burner);
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        ticket.burn(tokenId, PAYMENT_ID_1);
+    }
+
+    // ---------------------------------------------------------------------
+    // Custodial-wallet pattern
+    // ---------------------------------------------------------------------
+
+    function test_Custodial_MintAndTransfer() public {
+        // Mint to ATLAS-managed custodial holder with a non-zero email hash. The TicketMinted
+        // event records the email hash so off-chain indexers can join the ticket to the buyer.
+        vm.expectEmit(true, true, true, true, address(ticket));
+        emit TicketMinted(1, custodial, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_1);
+
+        vm.prank(minter);
+        uint256 tokenId = ticket.mint(custodial, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_1);
+
+        assertEq(tokenId, 1, "tokenId");
+        assertEq(ticket.ownerOf(tokenId), custodial, "custodial holder owns ticket");
+        assertEq(ticket.emailHashOf(tokenId), EMAIL_HASH_1, "emailHash stored");
+
+        // Once the buyer connects a wallet, the operator transfers the ticket via standard
+        // ERC-721 transferFrom — no special claim function. The email hash stays attached so
+        // historical correlation works even after the handoff.
+        vm.prank(custodial);
+        ticket.transferFrom(custodial, alice, tokenId);
+
+        assertEq(ticket.ownerOf(tokenId), alice, "buyer owns ticket post-claim");
+        assertEq(ticket.emailHashOf(tokenId), EMAIL_HASH_1, "emailHash preserved across transfer");
     }
 
     // ---------------------------------------------------------------------
@@ -160,6 +268,11 @@ contract AtlasTicketTest is Test {
         ticket.eventIdOf(99);
     }
 
+    function test_emailHashOf_unminted_reverts() public {
+        vm.expectRevert(abi.encodeWithSelector(IAtlasTicket.TokenNotMinted.selector, uint256(99)));
+        ticket.emailHashOf(99);
+    }
+
     // ---------------------------------------------------------------------
     // Upgrade
     // ---------------------------------------------------------------------
@@ -167,7 +280,7 @@ contract AtlasTicketTest is Test {
     function test_upgrade_uupsAuth() public {
         // Mint before upgrade so we can prove storage survives the upgrade.
         vm.prank(minter);
-        ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1);
+        ticket.mint(alice, EVENT_ID_1, PAYMENT_ID_1, URI_1, EMAIL_HASH_1);
 
         AtlasTicketV2 v2 = new AtlasTicketV2();
         vm.prank(upgrader);
@@ -178,6 +291,7 @@ contract AtlasTicketTest is Test {
         assertEq(ticket.tokenURI(1), URI_1, "uri persists across upgrade");
         assertEq(ticket.eventIdOf(1), EVENT_ID_1, "eventId persists");
         assertEq(ticket.paymentIdOf(1), PAYMENT_ID_1, "paymentId persists");
+        assertEq(ticket.emailHashOf(1), EMAIL_HASH_1, "emailHash persists");
         assertEq(AtlasTicketV2(address(ticket)).version(), "v2", "v2 method exposed");
     }
 

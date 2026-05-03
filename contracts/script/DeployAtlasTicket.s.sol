@@ -9,11 +9,23 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 /// @notice Deploys AtlasTicket (UUPS proxy) to a deterministic CREATE2 address across EVM chains.
 /// @dev Set env vars before running:
 ///        ADMIN    — DEFAULT_ADMIN_ROLE recipient (governance multisig)
-///        MINTER   — MINTER_ROLE recipient (operations server / payment-settlement service)
+///        MINTER   — MINTER_ROLE recipient (ATLAS-managed wallet that mints after settlement)
 ///        PAUSER   — PAUSER_ROLE recipient (operations multisig)
 ///        UPGRADER — UPGRADER_ROLE recipient (governance multisig + timelock recommended)
 ///        NAME     — ERC-721 collection name (e.g. "ATLAS Ticket")
 ///        SYMBOL   — ERC-721 collection symbol (e.g. "ATLAS")
+///
+///      The script grants `MINTER_ROLE`, `PAUSER_ROLE`, and `UPGRADER_ROLE` at initialization
+///      time but intentionally does NOT pre-grant `BURNER_ROLE`. Operators decide which
+///      account drives refund-side burns post-deploy (typically the same settlement service
+///      that calls FeeRouter.reverseSettle()) and grant the role with:
+///
+///          cast send $PROXY "grantRole(bytes32,address)" \
+///              $(cast keccak "BURNER_ROLE") \
+///              $BURNER_ADDRESS \
+///              --account admin
+///
+///      See `contracts/deploy/<chain>.md` §"AtlasTicket BURNER_ROLE" for chain-specific notes.
 contract DeployAtlasTicket is Script {
     /// @dev Nick's deterministic CREATE2 factory — same address on every major EVM chain.
     address internal constant DETERMINISTIC_FACTORY = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
