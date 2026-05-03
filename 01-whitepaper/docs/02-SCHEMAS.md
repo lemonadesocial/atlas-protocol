@@ -8,7 +8,17 @@
 
 ## Overview
 
-ATLAS defines nine core schemas. Each schema specifies the data contract between protocol participants: platforms, agents, registries, and smart contracts. All schemas use JSON. Event listings use JSON-LD to extend Schema.org for web compatibility. Timestamps follow ISO 8601. Monetary amounts are strings to avoid floating-point precision errors.
+ATLAS defines ten core schemas. Each schema specifies the data contract between protocol participants: platforms, agents, registries, and smart contracts. All schemas use JSON. Event listings use JSON-LD to extend Schema.org for web compatibility. Timestamps follow ISO 8601. Monetary amounts are strings to avoid floating-point precision errors.
+
+### Event URN Format
+
+Every event has a stable URN of the form:
+
+```
+urn:atlas:event:<resolver-domain>:<platform-event-id>
+```
+
+`<resolver-domain>` is the issuing Platform's canonical resolver domain (`lemonade.social` for any Lemonade-hosted Space, the platform's canonical domain otherwise). `<platform-event-id>` is the **immutable** platform-internal primary key (never a slug or vanity handle). The URN is the protocol-level identity of the event and is the field used as a foreign key by every other schema in this document. See [01-PROTOCOL-SPEC §1.4](./01-PROTOCOL-SPEC.md#14-event-urn-format) for the normative definition.
 
 Related specs: ARCHITECTURE.md (system design), PROTOCOL-SPEC.md (API contracts), PROGRESSIVE-DECENTRALIZATION.md (trust migration).
 
@@ -22,14 +32,16 @@ The well-known endpoint response. Every ATLAS-compliant domain serves this at `/
 |-------|------|----------|-------------|
 | `atlas` | string | yes | Protocol version. Current: `"1.0"`. |
 | `name` | string | yes | Platform or space display name. |
-| `url` | string | yes | Platform homepage URL. |
+| `url` | string | yes | Platform homepage URL (display metadata, mutable). |
 | `logo` | string | no | URL to platform logo (PNG or SVG, min 128x128). |
+| `resolver_domain` | string | yes | Canonical resolver domain used in event URNs (e.g. `"lemonade.social"`, `"eventbrite.com"`, `"lu.ma"`). For Lemonade-hosted Spaces this is **always** `"lemonade.social"` regardless of the custom domain the Space uses for display. See [01-PROTOCOL-SPEC §1.4](./01-PROTOCOL-SPEC.md#14-event-urn-format). |
 | `capabilities` | string[] | yes | Supported protocol features: `"listing"`, `"purchase"`, `"settlement"`. |
 | `endpoints` | object | yes | API endpoint URLs. Contains `events_url` (event feed) and `purchase_url` (402 flow base). |
 | `settlement` | object | yes | Settlement configuration. Contains `chains` (string array of chain identifiers — snake_case bare names like `"base"`, `"arbitrum"`, `"megaeth"`, `"tempo"`) and `token` (settlement token, e.g. `"USDC"`). |
 | `payment_methods` | string[] | yes | Per-rail payment-method identifiers. snake_case `<chain>_<token>` (e.g. `"base_usdc"`, `"arbitrum_usdc"`, `"tempo_usdc"`, `"megaeth_usdm"`) plus `"stripe_spt"` for fiat. Same vocabulary as the SDK's `AtlasPaymentMethodType` union — see [03-SETTLEMENT-SPEC §2](./03-SETTLEMENT-SPEC.md#2-supported-chains) for the full list. |
 | `fee_model` | string | yes | Either `"inclusive"` (fees included in listed price) or `"additive"` (fees added at checkout). |
-| `signing_keys` | object[] | yes | Array of JWK public keys used to sign W3C Verifiable Credential receipts. Each key includes `kid`, `kty`, `crv`, `x`, `y`. |
+| `signing_key` | object | yes | JWK public key used to sign **event records** published by this Platform. Registries verify event-feed payloads against this key before indexing (see [13-FEDERATION-SPEC §6](./13-FEDERATION-SPEC.md#6-cryptographic-event-provenance)). Distinct from `signing_keys[]` (which is for receipts). |
+| `signing_keys` | object[] | yes | Array of JWK public keys used to sign W3C Verifiable Credential **receipts**. Each key includes `kid`, `kty`, `crv`, `x`, `y`. |
 
 ```json
 {
@@ -37,10 +49,11 @@ The well-known endpoint response. Every ATLAS-compliant domain serves this at `/
   "name": "Brooklyn Jazz Collective",
   "url": "https://bjc.events",
   "logo": "https://bjc.events/logo.png",
+  "resolver_domain": "lemonade.social",
   "capabilities": ["listing", "purchase", "settlement"],
   "endpoints": {
-    "events_url": "https://bjc.events/atlas/v1/events",
-    "purchase_url": "https://bjc.events/atlas/v1/purchase"
+    "events_url": "https://lemonade.social/atlas/v1/events",
+    "purchase_url": "https://lemonade.social/atlas/v1/purchase"
   },
   "settlement": {
     "chains": ["base", "megaeth", "worldchain", "arbitrum"],
@@ -48,6 +61,13 @@ The well-known endpoint response. Every ATLAS-compliant domain serves this at `/
   },
   "payment_methods": ["base_usdc", "arbitrum_usdc", "worldchain_usdc", "megaeth_usdm", "stripe_spt"],
   "fee_model": "inclusive",
+  "signing_key": {
+    "kid": "platform-bjc-2026-04",
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "a73OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+    "y": "b_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0"
+  },
   "signing_keys": [
     {
       "kid": "bjc-2026-04",
@@ -70,11 +90,15 @@ The canonical event listing. Uses JSON-LD extending `schema.org/Event` with ATLA
 |-------|------|----------|-------------|
 | `@context` | string[] | yes | JSON-LD contexts: `"https://schema.org"` and `"https://atlas.events/v1"`. |
 | `@type` | string | yes | Always `"Event"`. |
+| `atlas:urn` | string | yes | Canonical event URN: `urn:atlas:event:<resolver-domain>:<platform-event-id>`. The protocol-level identity of the event. Immutable. See [01-PROTOCOL-SPEC §1.4](./01-PROTOCOL-SPEC.md#14-event-urn-format). |
+| `atlas:platform_id` | string | yes | The Platform that issued this event, identified by its resolver domain (e.g. `"lemonade.social"`). Foreign key to the Platform schema (Schema 10). |
+| `atlas:display_url` | string | no | Mutable, human-readable URL the platform currently uses to display this event (e.g. a vanity slug under a custom domain). Returned in the resolver response; MUST NOT be used as a join key. |
+| `atlas:successor_urn` | string | no | If present, this event has been superseded — sales for it are no longer accepted, and the new canonical URN is referenced here. Used by the cross-platform transfer protocol; see [14-EVENT-PORTABILITY-SPEC](./14-EVENT-PORTABILITY-SPEC.md). |
 | `name` | string | yes | Event title. |
 | `startDate` | string | yes | ISO 8601 start timestamp with timezone offset. |
 | `endDate` | string | no | ISO 8601 end timestamp with timezone offset. |
 | `location` | object | yes | Schema.org Place object with `@type`, `name`, and `address`. |
-| `atlas:availability` | string | yes | One of `"available"`, `"sold_out"`, `"cancelled"`, `"draft"`. |
+| `atlas:availability` | string | yes | One of `"available"`, `"sold_out"`, `"cancelled"`, `"draft"`, `"superseded"` (see Schema 14 for `superseded`). |
 | `atlas:ticketTypes` | AtlasTicketType[] | yes | Array of ticket type objects (see Schema 3). |
 | `atlas:settlement` | object | yes | Contains `chains` (string array) and `token` (string). |
 | `atlas:ipfs_cid` | string | yes | Content identifier on IPFS. Derived from listing content. |
@@ -86,6 +110,9 @@ The canonical event listing. Uses JSON-LD extending `schema.org/Event` with ATLA
 {
   "@context": ["https://schema.org", "https://atlas.events/v1"],
   "@type": "Event",
+  "atlas:urn": "urn:atlas:event:lemonade.social:65f9a2c14b1d2e0001a3f5b7",
+  "atlas:platform_id": "lemonade.social",
+  "atlas:display_url": "https://bjc.events/jazz-night-april-15",
   "name": "Late Night Jazz at Nublu",
   "startDate": "2026-04-15T21:00:00-04:00",
   "endDate": "2026-04-16T01:00:00-04:00",
@@ -104,7 +131,7 @@ The canonical event listing. Uses JSON-LD extending `schema.org/Event` with ATLA
         "amount": "25.00",
         "currency": "USD",
         "fees": [
-          { "type": "protocol", "amount": "0.50", "description": "ATLAS 2% protocol fee" }
+          { "type": "protocol", "amount": "0.125", "description": "ATLAS 0.5% protocol fee" }
         ]
       },
       "availability": {
@@ -169,8 +196,10 @@ A single ticket tier within an event listing. Nested inside the `atlas:ticketTyp
     "amount": "150.00",
     "currency": "USD",
     "fees": [
-      { "type": "protocol", "amount": "3.00", "description": "ATLAS 2% protocol fee" },
-      { "type": "service", "amount": "5.00", "description": "Platform service fee" }
+      { "type": "protocol", "amount": "0.75", "description": "ATLAS 0.5% protocol fee" },
+      { "type": "platform_meta", "amount": "1.50", "description": "Lemonade meta-fee 1%" },
+      { "type": "platform_space", "amount": "3.00", "description": "Space platform fee 2%" },
+      { "type": "service", "amount": "5.00", "description": "Organizer service fee" }
     ]
   },
   "availability": {
@@ -234,10 +263,10 @@ A W3C Verifiable Credential serving as the purchase receipt and ticket. Signed b
 | `@context` | string[] | yes | VC contexts: `"https://www.w3.org/2018/credentials/v1"` and `"https://atlas.events/v1"`. |
 | `type` | string[] | yes | Always `["VerifiableCredential", "AtlasTicketReceipt"]`. |
 | `id` | string | yes | Unique credential URI (e.g. `"urn:atlas:receipt:rec_abc123"`). |
-| `issuer` | string | yes | DID of the issuing platform (e.g. `"did:web:bjc.events"`). |
+| `issuer` | string | yes | DID of the issuing platform's resolver domain (e.g. `"did:web:lemonade.social"`). |
 | `issuanceDate` | string | yes | ISO 8601 timestamp of issuance. |
 | `credentialSubject` | object | yes | Ticket details. |
-| `credentialSubject.event_id` | string | yes | ATLAS event identifier. |
+| `credentialSubject.event_urn` | string | yes | Canonical event URN (Schema 2). The URN is the protocol-level event identifier. |
 | `credentialSubject.ticket_type` | string | yes | Ticket type identifier matching `ticket_type_id` in the listing. |
 | `credentialSubject.holder` | string | yes | Holder identifier (wallet address or DID). |
 | `credentialSubject.settlement_tx_hash` | string | yes | On-chain transaction hash of the USDC settlement. |
@@ -255,10 +284,10 @@ A W3C Verifiable Credential serving as the purchase receipt and ticket. Signed b
   ],
   "type": ["VerifiableCredential", "AtlasTicketReceipt"],
   "id": "urn:atlas:receipt:rec_abc123",
-  "issuer": "did:web:bjc.events",
+  "issuer": "did:web:lemonade.social",
   "issuanceDate": "2026-04-14T21:05:30Z",
   "credentialSubject": {
-    "event_id": "evt_abc123",
+    "event_urn": "urn:atlas:event:lemonade.social:65f9a2c14b1d2e0001a3f5b7",
     "ticket_type": "tt_ga_001",
     "holder": "0x9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e",
     "settlement_tx_hash": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
@@ -266,13 +295,13 @@ A W3C Verifiable Credential serving as the purchase receipt and ticket. Signed b
   "proof": {
     "type": "EcdsaSecp256r1Signature2019",
     "created": "2026-04-14T21:05:30Z",
-    "verificationMethod": "did:web:bjc.events#bjc-2026-04",
+    "verificationMethod": "did:web:lemonade.social#bjc-2026-04",
     "proofValue": "z3FXs1GYbKm...truncated...7dN2p"
   }
 }
 ```
 
-Verification flow: resolve `did:web:bjc.events` to fetch the manifest, match `kid` from `verificationMethod` against `signing_keys`, verify the ES256 signature over the credential body. The receipt CID is stored in ERC-721 token metadata at Stage 2.
+Verification flow: resolve `did:web:lemonade.social` to fetch the manifest, match `kid` from `verificationMethod` against `signing_keys`, verify the ES256 signature over the credential body. The receipt CID is stored in ERC-721 token metadata at Stage 2.
 
 ---
 
@@ -331,6 +360,9 @@ The registry search response. Contains pagination metadata and an array of Atlas
     {
       "@context": ["https://schema.org", "https://atlas.events/v1"],
       "@type": "Event",
+      "atlas:urn": "urn:atlas:event:lemonade.social:65f9a2c14b1d2e0001a3f5b7",
+      "atlas:platform_id": "lemonade.social",
+      "atlas:display_url": "https://bjc.events/jazz-night-april-15",
       "name": "Late Night Jazz at Nublu",
       "startDate": "2026-04-15T21:00:00-04:00",
       "location": {
@@ -441,6 +473,48 @@ An XMTP message within the ATLAS communication layer. Organizer agents send mess
 ```
 
 All message content is end-to-end encrypted by XMTP. Lemonade, XMTP network nodes, and IPFS cannot read message content. Guests opt in at purchase time and can revoke consent at any point.
+
+---
+
+## 10. Platform
+
+The unifying abstraction for any system that issues ATLAS events. A Lemonade Space, an Eventbrite Organization, a Lu.ma Calendar, and a Partiful Host are all Platforms in protocol terms. The Platform schema is the registry's record of an issuer; one Platform record exists per `(host_system, platform_event_id_namespace)` pair.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `platform_id` | string | yes | Resolver domain that anchors this Platform's URNs (e.g. `"lemonade.social"`, `"eventbrite.com"`, `"lu.ma"`). Platform identity in the protocol. |
+| `name` | string | yes | Human-readable Platform name. |
+| `host_system` | string | yes | The host system implementation kind: `"lemonade_space"`, `"eventbrite_org"`, `"luma_calendar"`, `"partiful_host"`, or `"generic_atlas"`. Drives connector behavior in the registry. |
+| `manifest_url` | string | yes | URL of the Platform's `/.well-known/atlas.json`. |
+| `events_url` | string | yes | URL of the Platform's event feed (also discoverable from the manifest). |
+| `signing_key` | object | yes | JWK (`kid`, `kty`, `crv`, `x`, `y`) the Platform uses to sign event-feed payloads. Registries verify event provenance against this key before indexing. |
+| `verification_status` | string | yes | One of `"unverified"`, `"verified"`, `"revoked"`. Set by registries based on the domain-ownership challenge described in [13-FEDERATION-SPEC §3](./13-FEDERATION-SPEC.md#3-domain-ownership-verification). |
+| `verified_at` | string | no | ISO 8601 timestamp of last successful verification. |
+| `registered_at` | string | yes | ISO 8601 timestamp the Platform self-registered with the registry. |
+| `last_synced_at` | string | no | ISO 8601 timestamp of the last successful event-feed pull. |
+
+```json
+{
+  "platform_id": "lemonade.social",
+  "name": "Lemonade",
+  "host_system": "lemonade_space",
+  "manifest_url": "https://lemonade.social/.well-known/atlas.json",
+  "events_url": "https://lemonade.social/atlas/v1/events",
+  "signing_key": {
+    "kid": "platform-lemonade-2026-04",
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "a73OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+    "y": "b_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0"
+  },
+  "verification_status": "verified",
+  "verified_at": "2026-04-01T00:00:00Z",
+  "registered_at": "2026-03-28T12:00:00Z",
+  "last_synced_at": "2026-04-14T12:00:00Z"
+}
+```
+
+Every AtlasEvent's `atlas:platform_id` is a foreign key to a Platform. A registry that has not verified a Platform MUST NOT serve its events as `verified` and SHOULD label them with a provenance warning. Lemonade-hosted Spaces all share `platform_id = "lemonade.social"`; the per-Space identity is recorded inside the listing as `atlas:organizer_id`, not as a separate Platform.
 
 ---
 

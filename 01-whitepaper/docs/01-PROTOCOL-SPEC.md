@@ -8,7 +8,7 @@
 
 ## 1. Well-Known Endpoint
 
-Every ATLAS-compliant domain MUST serve a manifest at `/.well-known/atlas.json`. The manifest declares the domain's identity, event feed URL, supported protocol capabilities, and settlement methods.
+Every ATLAS-compliant domain MUST serve a manifest at `/.well-known/atlas.json`. The manifest declares the domain's identity, event feed URL, supported protocol capabilities, settlement methods, and the per-platform `signing_key` used to sign event records (see Section 1.3 and [02-SCHEMAS §1](./02-SCHEMAS.md#1-atlasmanifest)). The manifest also identifies the platform's canonical resolver domain — the domain that anchors the URN format defined in Section 1.4.
 
 ### 1.1 Transport Requirements
 
@@ -34,10 +34,11 @@ The manifest schema is defined in [02-SCHEMAS §1 AtlasManifest](./02-SCHEMAS.md
   "name": "Brooklyn Jazz Collective",
   "url": "https://bjc.events",
   "logo": "https://bjc.events/logo.png",
+  "resolver_domain": "lemonade.social",
   "capabilities": ["listing", "purchase", "settlement"],
   "endpoints": {
-    "events_url": "https://bjc.events/atlas/v1/events",
-    "purchase_url": "https://bjc.events/atlas/v1/purchase"
+    "events_url": "https://lemonade.social/atlas/v1/events",
+    "purchase_url": "https://lemonade.social/atlas/v1/purchase"
   },
   "settlement": {
     "chains": ["base", "megaeth", "worldchain", "arbitrum"],
@@ -45,6 +46,15 @@ The manifest schema is defined in [02-SCHEMAS §1 AtlasManifest](./02-SCHEMAS.md
   },
   "payment_methods": ["base_usdc", "arbitrum_usdc", "worldchain_usdc", "megaeth_usdm", "stripe_spt"],
   "fee_model": "inclusive",
+  "signing_key": {
+    "kid": "platform-bjc-2026-04",
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "a73OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+    "y": "b_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0",
+    "alg": "ES256",
+    "use": "sig"
+  },
   "signing_keys": [
     {
       "kid": "key-2026-04",
@@ -59,6 +69,8 @@ The manifest schema is defined in [02-SCHEMAS §1 AtlasManifest](./02-SCHEMAS.md
 }
 ```
 
+The above manifest belongs to the Brooklyn Jazz Collective Lemonade Space. The custom domain `bjc.events` appears in `name` and `url` (display metadata), but `resolver_domain` is `lemonade.social` and the `events_url` resolves under `lemonade.social`. Events from this Space have URNs of the form `urn:atlas:event:lemonade.social:<platform-event-id>`. An external platform (e.g. Eventbrite) would set `resolver_domain` to its own canonical domain.
+
 Field definitions (see 02-SCHEMAS §1 for the authoritative table):
 
 - `atlas`: Protocol version string. MAJOR.MINOR format (see Section 6).
@@ -72,6 +84,51 @@ Field definitions (see 02-SCHEMAS §1 for the authoritative table):
 - `payment_methods`: Per-rail payment-method identifiers (snake_case `<chain>_<token>`, e.g. `base_usdc`, `arbitrum_usdc`, `tempo_usdc`, `megaeth_usdm`) plus `stripe_spt` for fiat. Same vocabulary as the SDK's `AtlasPaymentMethodType` union — see [02-SCHEMAS §1 AtlasManifest](./02-SCHEMAS.md#1-atlasmanifest) for the canonical list.
 - `fee_model`: Either `inclusive` (price includes fees) or `additive` (fees added at checkout).
 - `signing_keys`: Array of JWK public keys used for receipt signing. Supports multiple active keys during rotation.
+- `signing_key`: Per-platform event-provenance key declared at the top level of the manifest (separate from `signing_keys[]`, which is for receipt signing). Registries verify event records published by this platform against this key before indexing. See [02-SCHEMAS §1](./02-SCHEMAS.md#1-atlasmanifest) and [13-FEDERATION-SPEC §6](./13-FEDERATION-SPEC.md#6-cryptographic-event-provenance).
+- `resolver_domain`: Canonical resolver domain used in event URNs. Required. For Lemonade-hosted Spaces, this is always `lemonade.social`; for external platforms it is the platform's canonical domain (e.g. `eventbrite.com`, `lu.ma`). See Section 1.4.
+
+### 1.3 Platform Abstraction
+
+The manifest describes a *Platform* — the unifying abstraction for any system that issues ATLAS events. A Lemonade Space, an Eventbrite Organization, and a Lu.ma Calendar are all Platforms in protocol terms. Each Platform has a stable platform identifier in its host system, a resolver domain, a signing key, and an event feed. The Platform schema is normatively defined in [02-SCHEMAS §10](./02-SCHEMAS.md#10-platform).
+
+### 1.4 Event URN Format
+
+Every ATLAS event has a stable, globally unique URN of the form:
+
+```
+urn:atlas:event:<resolver-domain>:<platform-event-id>
+```
+
+- `<resolver-domain>` is the Platform's canonical resolver domain (Section 1.2). For Lemonade-hosted Spaces this is **always** `lemonade.social`, regardless of what custom domain the Space uses for display. For external platforms it is their canonical domain (e.g. `eventbrite.com`, `lu.ma`).
+- `<platform-event-id>` is the **immutable** platform-internal event identifier — the primary key in the platform's database. Slugs, vanity URLs, and human-readable handles MUST NOT be used; they are mutable and unsuitable for a permanent identifier.
+
+Examples:
+
+```
+urn:atlas:event:lemonade.social:65f9a2c14b1d2e0001a3f5b7
+urn:atlas:event:eventbrite.com:1234567890
+urn:atlas:event:lu.ma:evt-abc123
+```
+
+The URN is the canonical identifier used by the registry, the Settlement and Reward contracts, the transfer protocol (see [14-EVENT-PORTABILITY-SPEC](./14-EVENT-PORTABILITY-SPEC.md)), and any cross-platform reference. Custom display domains are metadata attached to the listing, not part of the URN.
+
+### 1.5 Display URLs
+
+Display URLs are mutable. A platform MAY change the human-readable URL of an event at any time (vanity slug rename, custom domain switch, marketing redirect). The resolver returns the current display URL in the event payload alongside the URN:
+
+```json
+{
+  "atlas:urn": "urn:atlas:event:lemonade.social:65f9a2c14b1d2e0001a3f5b7",
+  "atlas:display_url": "https://bjc.events/jazz-night-april-15",
+  "atlas:canonical_resolver_url": "https://lemonade.social/atlas/v1/events/65f9a2c14b1d2e0001a3f5b7"
+}
+```
+
+Agents and registries MUST treat the URN as the identity of the event. Display URLs are presentation metadata and MUST NOT be used as join keys.
+
+### 1.6 Registry Self-Registration
+
+A platform announces its existence to a registry by `POST /atlas/v1/register` with its manifest URL. The registry verifies domain ownership via a `.well-known/atlas-verification.txt` challenge, then begins polling the platform's event feed. Multiple registries can independently index the same platform; registries federate with each other to converge on a shared view. The full self-registration handshake, the verification challenge, and federation sync are normatively defined in [13-FEDERATION-SPEC](./13-FEDERATION-SPEC.md).
 
 ---
 
