@@ -4,5 +4,5 @@
   "packages/mpp": "0.3.0",
   "packages/ipfs": "0.3.0",
   "packages/connector-framework": "0.3.0",
-  "packages/types": "1.0.0"
+  "packages/types": "0.1.0"
 }

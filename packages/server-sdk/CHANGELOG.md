@@ -12,7 +12,7 @@
 
 * The following workspace dependencies were updated
   * dependencies
-    * @atlasprotocol/types bumped to 1.0.0
+    * @atlasprotocol/types bumped to 0.1.0
 
 ## [0.4.0](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.3.0...server-sdk-v0.4.0) (2026-05-03)
 

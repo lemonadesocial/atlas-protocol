@@ -15,7 +15,7 @@ All notable changes to this package will be documented in this file. The format 
 * The following workspace dependencies were updated
   * dependencies
     * @atlasprotocol/server-sdk bumped to 0.5.0
-    * @atlasprotocol/types bumped to 1.0.0
+    * @atlasprotocol/types bumped to 0.1.0
 
 ## [0.2.2](https://github.com/lemonadesocial/atlas-protocol/compare/connector-framework-v0.2.1...connector-framework-v0.2.2) (2026-05-03)
 
