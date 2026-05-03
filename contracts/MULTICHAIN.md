@@ -1,5 +1,13 @@
 # Multi-chain deployment — ATLAS Protocol contracts
 
+> **FeeRouter v2 (May 2026).** FeeRouter has moved to a v2 ABI: `settle()` now accepts a
+> `FeeSplit[]` array of stacked platform fees (cap 20% of gross), a new `reverseSettle()`
+> function plus `REFUND_ROLE` enable per-payment refunds, and the default protocol fee was
+> lowered from 2% to 0.5% (50 bps). The v2 contract enforces a 70% organizer-share floor as
+> defense-in-depth. ATLAS is pre-production and FeeRouter has not yet been deployed on any
+> chain — see [`deployments.json`](../deployments.json), where every proxy slot is `null` —
+> so the ABI break is non-breaking on-chain. Operators integrating now should target v2.
+
 ## Architectural stance: chain-neutral within EVM, separate ports for non-EVM
 
 ATLAS contracts are EVM-portable. Any EVM chain that supports an ERC-20 stablecoin can host FeeRouter. Any EVM chain can host AtlasTicket. The protocol does **not** prescribe which chains operators use — the contracts are generic, the choice is operational.

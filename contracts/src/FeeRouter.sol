@@ -13,10 +13,13 @@ import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/Reentran
 import { IFeeRouter } from "./interfaces/IFeeRouter.sol";
 
 /// @title FeeRouter
-/// @notice Stage 1 ATLAS fee router. Splits incoming stablecoin payments between an organizer
-///         and the protocol treasury according to a single configurable fee schedule. Payments
-///         are idempotent per paymentId. The settlement token is supplied at initialization
-///         time so the contract is portable across EVM chains and stablecoin choices.
+/// @notice ATLAS FeeRouter v2. Splits incoming stablecoin payments between an organizer, the
+///         protocol treasury, and zero or more platform fee recipients (stacked platform fees).
+///         Payments are idempotent per paymentId. The settlement token is supplied at
+///         initialization time so the contract is portable across EVM chains and stablecoin
+///         choices. Settled payments may be reversed by an account holding REFUND_ROLE — the
+///         caller supplies the organizer share and any non-listed platform fees, while listed
+///         platform-fee recipients refund their cut via pre-approved transferFrom.
 contract FeeRouter is
     Initializable,
     UUPSUpgradeable,
@@ -33,14 +36,23 @@ contract FeeRouter is
     /// @notice Role permitted to pause and unpause settlements.
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
+    /// @notice Role permitted to call reverseSettle().
+    bytes32 public constant REFUND_ROLE = keccak256("REFUND_ROLE");
+
     /// @notice Hard cap on protocol fee in basis points (10%).
     uint16 public constant MAX_FEE_BPS = 1000;
 
     /// @notice Denominator for basis-point math.
     uint16 public constant BPS_DENOMINATOR = 10_000;
 
-    /// @notice Default protocol fee on initialization (2%).
-    uint16 public constant INITIAL_FEE_BPS = 200;
+    /// @notice Default protocol fee on initialization (0.5%).
+    uint16 public constant INITIAL_FEE_BPS = 50;
+
+    /// @notice Maximum cumulative platform fees as a fraction of totalAmount (20%).
+    uint16 public constant MAX_TOTAL_PLATFORM_FEES_BPS = 2000;
+
+    /// @notice Minimum organizer share as a fraction of totalAmount (70%).
+    uint16 public constant MIN_ORGANIZER_BPS = 7000;
 
     /// @dev ERC-20 stablecoin used for all settlements. Exposed via {stablecoin}.
     IERC20 private _stablecoin;
@@ -54,8 +66,12 @@ contract FeeRouter is
     /// @dev Tracks settled paymentIds for idempotency.
     mapping(bytes32 => bool) private _settled;
 
-    /// @dev Reserves storage to total of 50 slots for upgrade-safety. See OZ upgradeable docs.
-    uint256[46] private __gap;
+    /// @dev Tracks refunded paymentIds — refund is one-shot per payment.
+    mapping(bytes32 => bool) private _refunded;
+
+    /// @dev Reserves storage so adding a new state variable later does not collide with derived
+    ///      contracts. Decrement when adding a new state slot above. See OZ upgradeable docs.
+    uint256[45] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -95,28 +111,99 @@ contract FeeRouter is
     // ---------------------------------------------------------------------
 
     /// @inheritdoc IFeeRouter
-    function settle(address organizer, uint256 amount, bytes32 paymentId) external override nonReentrant whenNotPaused {
-        if (amount == 0) revert ZeroAmount();
+    function settle(
+        address organizer,
+        uint256 totalAmount,
+        bytes32 paymentId,
+        FeeSplit[] calldata platformFees
+    ) external override nonReentrant whenNotPaused {
+        if (totalAmount == 0) revert ZeroAmount();
         if (organizer == address(0)) revert ZeroAddress();
         if (_settled[paymentId]) revert PaymentAlreadySettled(paymentId);
 
         // Effects: mark settled before any external calls.
         _settled[paymentId] = true;
 
-        uint256 protocolFee = (amount * feeBps) / BPS_DENOMINATOR;
-        uint256 organizerAmount = amount - protocolFee;
+        uint256 protocolFee = (totalAmount * feeBps) / BPS_DENOMINATOR;
+
+        uint256 totalPlatformFees;
+        for (uint256 i = 0; i < platformFees.length; ++i) {
+            if (platformFees[i].recipient == address(0)) revert ZeroAddress();
+            totalPlatformFees += platformFees[i].amount;
+        }
+
+        // Cap: sum of platform fees may not exceed MAX_TOTAL_PLATFORM_FEES_BPS of totalAmount.
+        // Done via cross-multiplication to avoid an extra division.
+        if (totalPlatformFees * BPS_DENOMINATOR > totalAmount * MAX_TOTAL_PLATFORM_FEES_BPS) {
+            revert PlatformFeesAboveCap();
+        }
+
+        // Underflow-safe: enforced again by the next check + Solidity 0.8 checked subtraction.
+        uint256 organizerAmount = totalAmount - protocolFee - totalPlatformFees;
+
+        // Floor: organizer share must remain at least MIN_ORGANIZER_BPS of totalAmount.
+        if (organizerAmount * BPS_DENOMINATOR < totalAmount * MIN_ORGANIZER_BPS) {
+            revert OrganizerShareBelowFloor();
+        }
 
         // Interactions.
         IERC20 token = _stablecoin;
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        token.safeTransferFrom(msg.sender, address(this), totalAmount);
         if (organizerAmount > 0) {
             token.safeTransfer(organizer, organizerAmount);
         }
         if (protocolFee > 0) {
             token.safeTransfer(treasury, protocolFee);
         }
+        for (uint256 i = 0; i < platformFees.length; ++i) {
+            if (platformFees[i].amount > 0) {
+                token.safeTransfer(platformFees[i].recipient, platformFees[i].amount);
+            }
+        }
 
-        emit PaymentSettled(paymentId, organizer, organizerAmount, protocolFee);
+        emit PaymentSettled(paymentId, organizer, totalAmount, organizerAmount, protocolFee, platformFees);
+    }
+
+    /// @inheritdoc IFeeRouter
+    function reverseSettle(
+        bytes32 paymentId,
+        address buyer,
+        uint256 refundAmount,
+        FeeSplit[] calldata feesToReverse
+    ) external override onlyRole(REFUND_ROLE) nonReentrant whenNotPaused {
+        if (buyer == address(0)) revert ZeroAddress();
+        if (refundAmount == 0) revert ZeroAmount();
+        if (!_settled[paymentId]) revert PaymentNotSettled(paymentId);
+        if (_refunded[paymentId]) revert PaymentAlreadyRefunded(paymentId);
+
+        // Effects: mark refunded before any external calls.
+        _refunded[paymentId] = true;
+
+        IERC20 token = _stablecoin;
+
+        // Validate inputs and tally before any external calls.
+        uint256 totalFromRecipients;
+        for (uint256 i = 0; i < feesToReverse.length; ++i) {
+            if (feesToReverse[i].recipient == address(0)) revert ZeroAddress();
+            totalFromRecipients += feesToReverse[i].amount;
+        }
+        if (totalFromRecipients > refundAmount) revert RefundAmountInvalid();
+        uint256 fromCaller = refundAmount - totalFromRecipients;
+
+        // Interactions: pull each fee leg back from its recipient (recipient must pre-approve
+        // this contract), then pull the remainder from the caller, then pay the buyer.
+        for (uint256 i = 0; i < feesToReverse.length; ++i) {
+            uint256 amount = feesToReverse[i].amount;
+            if (amount > 0) {
+                token.safeTransferFrom(feesToReverse[i].recipient, address(this), amount);
+            }
+        }
+        if (fromCaller > 0) {
+            token.safeTransferFrom(msg.sender, address(this), fromCaller);
+        }
+        token.safeTransfer(buyer, refundAmount);
+
+        emit PaymentReversed(paymentId, buyer, refundAmount, feesToReverse);
     }
 
     /// @inheritdoc IFeeRouter
@@ -157,6 +244,11 @@ contract FeeRouter is
     /// @inheritdoc IFeeRouter
     function isSettled(bytes32 paymentId) external view override returns (bool) {
         return _settled[paymentId];
+    }
+
+    /// @inheritdoc IFeeRouter
+    function isRefunded(bytes32 paymentId) external view override returns (bool) {
+        return _refunded[paymentId];
     }
 
     // ---------------------------------------------------------------------
