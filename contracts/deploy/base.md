@@ -106,6 +106,28 @@ Expected addr     : 0x...
 
 Record the proxy in `deployments.json` under `atlasTicket.proxies.base_usdc`.
 
+### 5a. AtlasTicket BURNER_ROLE (post-deploy)
+
+The deploy script grants `MINTER_ROLE`, `PAUSER_ROLE`, and `UPGRADER_ROLE` at initialization
+time, but **does not** pre-grant `BURNER_ROLE`. After the AtlasTicket proxy is live, the
+`ADMIN` multisig grants `BURNER_ROLE` to the settlement service that drives FeeRouter
+refunds (typically the same wallet that holds `REFUND_ROLE` on FeeRouter):
+
+```bash
+export PROXY=0x...        # AtlasTicket proxy address from §5
+export BURNER=0x...       # BURNER_ROLE recipient (settlement service / refund worker)
+
+cast send $PROXY "grantRole(bytes32,address)" \
+  $(cast keccak "BURNER_ROLE") \
+  $BURNER \
+  --rpc-url $RPC_URL \
+  --account admin
+```
+
+Without this grant, refund-side calls to `AtlasTicket.burn(...)` revert with
+`AccessControlUnauthorizedAccount`. The custodial-wallet pattern (mints to an ATLAS-managed
+holder for email-only buyers) does not require any extra grant — it reuses `MINTER_ROLE`.
+
 ## 6. RewardLedger deploy
 
 RewardLedger takes a `STABLECOIN` parameter (same value as FeeRouter's `STABLECOIN`) plus

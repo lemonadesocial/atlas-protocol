@@ -55,6 +55,25 @@ Compute the expected addresses with `forge script script/DeployAtlasTicket.s.sol
 `getAtlasTicketAddress(chainSlug)` and `getAtlasTicketImplementation()` from
 `@atlasprotocol/server-sdk`.
 
+#### v2 — burn flow + custodial pattern
+
+`AtlasTicket` v2 introduces:
+
+- **`BURNER_ROLE`** — granted post-deploy to the ATLAS-managed settlement service that drives
+  `FeeRouter.reverseSettle()` refunds. The deploy script does NOT pre-grant this role; the
+  admin runs `grantRole(BURNER_ROLE, settlementService)` once the operator has identified the
+  burner wallet for that chain.
+- **`burn(tokenId, paymentId)`** — retires a ticket as part of a refund. Pause-gated.
+- **Custodial-wallet pattern** — `mint()` now accepts an `emailHash` (`bytes32`) argument.
+  Email-only buyers are minted to an ATLAS-managed custodial holder address with a
+  `keccak256(lowercase email)` hash recorded on-chain via `emailHashOf(tokenId)`. The buyer
+  later receives the ticket via standard ERC-721 transfer once they connect a wallet — no
+  special claim function is required. Wallet-first buyers pass `bytes32(0)` for `emailHash`.
+
+ATLAS contracts are pre-production; no proxies are deployed yet, so the v2 ABI change is
+non-breaking on-chain. SDK consumers updating to the v2 helpers gain `buildBurnTicketTx`,
+`parseTicketBurnedEvent`, and the new `emailHash` parameter on `buildMintTicketTx`.
+
 ### RewardLedger
 
 RewardLedger follows the same CREATE2 pattern with its own version-aware salt:
