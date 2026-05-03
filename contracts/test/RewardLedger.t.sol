@@ -2,6 +2,7 @@
 pragma solidity 0.8.27;
 
 import { Test } from "forge-std/Test.sol";
+import { stdError } from "forge-std/StdError.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
@@ -25,6 +26,7 @@ contract RewardLedgerTest is Test {
     address internal recorder = address(0xB0B);
     address internal pauser = address(0xCAFE);
     address internal upgrader = address(0xBEEF);
+    address internal reverser = address(0x5E45E);
     address internal recipient1 = address(0xD00D);
     address internal recipient2 = address(0xF00D);
     address internal payer = address(0xC0DE);
@@ -41,6 +43,7 @@ contract RewardLedgerTest is Test {
     );
     event Claimed(address indexed claimer, address indexed destination, uint256 amount);
     event Funded(address indexed from, uint256 amount);
+    event RewardsReversed(bytes32 indexed paymentId, uint256 totalReversed);
 
     function setUp() public {
         stablecoin = new MockStablecoin();
@@ -56,6 +59,12 @@ contract RewardLedgerTest is Test {
         stablecoin.mint(payer, 1_000_000e6);
         vm.prank(payer);
         stablecoin.approve(address(ledger), type(uint256).max);
+
+        // Grant REVERSER_ROLE to the reverser test address. The role is intentionally not
+        // pre-granted at init — admins grant it post-deploy to the settlement service.
+        bytes32 reverserRole = ledger.REVERSER_ROLE();
+        vm.prank(admin);
+        ledger.grantRole(reverserRole, reverser);
     }
 
     /// @dev Top up the ledger so claim tests have stablecoin to transfer out.
@@ -267,6 +276,149 @@ contract RewardLedgerTest is Test {
         vm.prank(payer);
         vm.expectRevert(IRewardLedger.ZeroAmount.selector);
         ledger.fund(0);
+    }
+
+    // ---------------------------------------------------------------------
+    // reverseRewards
+    // ---------------------------------------------------------------------
+
+    function test_reverseRewards_happyPath() public {
+        // Two recipients credited under one paymentId.
+        vm.prank(recorder);
+        ledger.recordReward(recipient1, IRewardLedger.RewardKind.ORGANIZER, 60e6, PAYMENT_ID_1);
+        vm.prank(recorder);
+        ledger.recordReward(recipient2, IRewardLedger.RewardKind.REFERRAL, 40e6, PAYMENT_ID_1);
+
+        assertEq(ledger.balanceOf(recipient1), 60e6, "pre: recipient1 credited");
+        assertEq(ledger.balanceOf(recipient2), 40e6, "pre: recipient2 credited");
+        assertFalse(ledger.isReversed(PAYMENT_ID_1), "pre: not reversed");
+
+        vm.expectEmit(true, false, false, true, address(ledger));
+        emit RewardsReversed(PAYMENT_ID_1, 100e6);
+
+        vm.prank(reverser);
+        ledger.reverseRewards(PAYMENT_ID_1);
+
+        assertEq(ledger.balanceOf(recipient1), 0, "post: recipient1 zeroed");
+        assertEq(ledger.balanceOf(recipient2), 0, "post: recipient2 zeroed");
+        assertTrue(ledger.isReversed(PAYMENT_ID_1), "post: reversed flag set");
+        // _recorded flags stay set — recordReward remains idempotent forever.
+        assertTrue(
+            ledger.isRecorded(PAYMENT_ID_1, IRewardLedger.RewardKind.ORGANIZER),
+            "ORGANIZER recorded flag retained after reverse"
+        );
+        assertTrue(
+            ledger.isRecorded(PAYMENT_ID_1, IRewardLedger.RewardKind.REFERRAL),
+            "REFERRAL recorded flag retained after reverse"
+        );
+    }
+
+    function test_reverseRewards_doesNotAffectOtherPayments() public {
+        // Credit two paymentIds against the same recipient.
+        vm.prank(recorder);
+        ledger.recordReward(recipient1, IRewardLedger.RewardKind.ORGANIZER, 60e6, PAYMENT_ID_1);
+        vm.prank(recorder);
+        ledger.recordReward(recipient1, IRewardLedger.RewardKind.ORGANIZER, 100e6, PAYMENT_ID_2);
+
+        vm.prank(reverser);
+        ledger.reverseRewards(PAYMENT_ID_1);
+
+        assertEq(
+            ledger.balanceOf(recipient1),
+            100e6,
+            "PAYMENT_ID_1 reversed but PAYMENT_ID_2 still credited"
+        );
+        assertTrue(ledger.isReversed(PAYMENT_ID_1));
+        assertFalse(ledger.isReversed(PAYMENT_ID_2));
+    }
+
+    function test_reverseRewards_unauthorized_reverts() public {
+        vm.prank(recorder);
+        ledger.recordReward(recipient1, IRewardLedger.RewardKind.ORGANIZER, 60e6, PAYMENT_ID_1);
+
+        bytes32 reverserRole = ledger.REVERSER_ROLE();
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, stranger, reverserRole)
+        );
+        vm.prank(stranger);
+        ledger.reverseRewards(PAYMENT_ID_1);
+    }
+
+    function test_reverseRewards_unrecorded_reverts() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IRewardLedger.RewardsNotRecorded.selector, PAYMENT_ID_1)
+        );
+        vm.prank(reverser);
+        ledger.reverseRewards(PAYMENT_ID_1);
+    }
+
+    function test_reverseRewards_doubleReverse_reverts() public {
+        vm.prank(recorder);
+        ledger.recordReward(recipient1, IRewardLedger.RewardKind.ORGANIZER, 60e6, PAYMENT_ID_1);
+
+        vm.prank(reverser);
+        ledger.reverseRewards(PAYMENT_ID_1);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IRewardLedger.RewardsAlreadyReversed.selector, PAYMENT_ID_1)
+        );
+        vm.prank(reverser);
+        ledger.reverseRewards(PAYMENT_ID_1);
+    }
+
+    function test_reverseRewards_paused_reverts() public {
+        vm.prank(recorder);
+        ledger.recordReward(recipient1, IRewardLedger.RewardKind.ORGANIZER, 60e6, PAYMENT_ID_1);
+
+        vm.prank(pauser);
+        ledger.pause();
+
+        vm.prank(reverser);
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        ledger.reverseRewards(PAYMENT_ID_1);
+
+        vm.prank(pauser);
+        ledger.unpause();
+
+        vm.prank(reverser);
+        ledger.reverseRewards(PAYMENT_ID_1);
+        assertTrue(ledger.isReversed(PAYMENT_ID_1), "reverse succeeds after unpause");
+    }
+
+    function test_reverseRewards_afterClaim_reverts() public {
+        // Credit + claim drains the recipient's accrued balance. A subsequent reverse
+        // would underflow; Solidity 0.8 checked subtraction must revert.
+        _fundLedger(60e6);
+        vm.prank(recorder);
+        ledger.recordReward(recipient1, IRewardLedger.RewardKind.ORGANIZER, 60e6, PAYMENT_ID_1);
+
+        vm.prank(recipient1);
+        ledger.claim();
+        assertEq(ledger.balanceOf(recipient1), 0, "balance drained by claim");
+
+        // Solidity 0.8 reverts on underflow with Panic(0x11).
+        vm.expectRevert(stdError.arithmeticError);
+        vm.prank(reverser);
+        ledger.reverseRewards(PAYMENT_ID_1);
+    }
+
+    function test_reverseRewards_recordReward_remainsIdempotent_afterReverse() public {
+        // After reverseRewards, the operator must NOT be able to re-record the same
+        // (paymentId, kind) — the _recorded flag stays set. This locks each payment's
+        // reward set as a one-shot decision.
+        vm.prank(recorder);
+        ledger.recordReward(recipient1, IRewardLedger.RewardKind.ORGANIZER, 60e6, PAYMENT_ID_1);
+
+        vm.prank(reverser);
+        ledger.reverseRewards(PAYMENT_ID_1);
+
+        vm.prank(recorder);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IRewardLedger.RewardAlreadyRecorded.selector, PAYMENT_ID_1, IRewardLedger.RewardKind.ORGANIZER
+            )
+        );
+        ledger.recordReward(recipient1, IRewardLedger.RewardKind.ORGANIZER, 60e6, PAYMENT_ID_1);
     }
 
     // ---------------------------------------------------------------------
