@@ -48,10 +48,7 @@ contract RewardLedger is
     /// @dev keccak256(paymentId, kind) → recorded flag. Powers idempotent recordReward().
     mapping(bytes32 => bool) private _recorded;
 
-    /// @dev Reserved storage gap for future upgrades. Three storage slots are used above
-    ///      (`_stablecoin`, `_balances`, `_recorded`); the gap is sized so the contract
-    ///      reserves a total of 50 slots for its own state, matching the convention used
-    ///      by {FeeRouter} (4 slots used + 45 gap → 49 total) and {AtlasTicket}.
+    /// @dev Reserves storage to total of 50 slots for upgrade-safety. See OZ upgradeable docs.
     uint256[47] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor

@@ -54,8 +54,8 @@ contract FeeRouter is
     /// @dev Tracks settled paymentIds for idempotency.
     mapping(bytes32 => bool) private _settled;
 
-    /// @dev Reserved storage gap for future upgrades.
-    uint256[45] private __gap;
+    /// @dev Reserves storage to total of 50 slots for upgrade-safety. See OZ upgradeable docs.
+    uint256[46] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {

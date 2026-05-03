@@ -51,8 +51,8 @@ contract AtlasTicket is
     /// @dev paymentId → tokenId (0 = not minted). Powers idempotent mint().
     mapping(bytes32 => uint256) private _tokenIdByPayment;
 
-    /// @dev Reserved storage gap for future upgrades.
-    uint256[44] private __gap;
+    /// @dev Reserves storage to total of 50 slots for upgrade-safety. See OZ upgradeable docs.
+    uint256[45] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
