@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.4.0...server-sdk-v0.5.0) (2026-05-03)
+
+
+### Features
+
+* **types,server-sdk,ipfs:** document types consolidation + complete cleanup ([#49](https://github.com/lemonadesocial/atlas-protocol/issues/49)) ([4e6b3e2](https://github.com/lemonadesocial/atlas-protocol/commit/4e6b3e26c33fe5796cb696b7055fd19bc85df4f5))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @atlasprotocol/types bumped to 0.1.0
+
 ## [0.4.0](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.3.0...server-sdk-v0.4.0) (2026-05-03)
 
 
