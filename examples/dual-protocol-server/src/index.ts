@@ -21,15 +21,22 @@ import { decode, deserialize, type MppPayload } from "@atlasprotocol/mpp";
 import {
   InMemoryIdempotencyStore,
   InMemoryRateLimiter,
+  RewardKind,
+  buildMintTicketTx,
+  buildRecordRewardTx,
   createRateLimitMiddleware,
   defaultSupportedChainIdentifiers,
   generateAtlasManifest,
   generateMppChallenge,
+  generateReceipt,
+  parseRewardRecordedEvent,
+  parseTicketMintedEvent,
   verifyPayment,
   verifyStripePayment,
   withIdempotency,
   type AtlasPaymentMethodType,
 } from "@atlasprotocol/server-sdk";
+import { keccak256, toHex } from "viem";
 import { Hono, type Context } from "hono";
 
 import {
@@ -40,6 +47,7 @@ import {
   lookupOrCreateHold,
   markSettled,
   type DemoEvent,
+  type DemoHold,
 } from "./data.js";
 
 const PORT = Number(process.env["PORT"] ?? 4001);
@@ -62,6 +70,23 @@ const ACCEPTED_CHAINS: AcceptedChain[] = ACCEPTED_CHAINS_ENV
       .filter(Boolean) as AcceptedChain[])
   : ["base_usdc", "optimism_usdc", "arbitrum_usdc"];
 
+// ---------------------------------------------------------------------------
+// Optional integration env vars — when set, the example wires up on-chain
+// mint + reward calls and IPFS pinning. When unset, the example STILL runs:
+// it logs a clear warning and skips the corresponding step. This keeps the
+// example runnable locally without on-chain credentials or a pinning
+// service account.
+// ---------------------------------------------------------------------------
+const ATLAS_TICKET_ADDRESS = process.env["ATLAS_TICKET_ADDRESS"] as `0x${string}` | undefined;
+const REWARD_LEDGER_ADDRESS = process.env["REWARD_LEDGER_ADDRESS"] as `0x${string}` | undefined;
+const WALLET_PRIVATE_KEY = process.env["WALLET_PRIVATE_KEY"] as `0x${string}` | undefined;
+const RPC_URL = process.env["RPC_URL"];
+const SETTLEMENT_CHAIN_NAME = process.env["SETTLEMENT_CHAIN_NAME"] ?? "base";
+const PINATA_JWT = process.env["PINATA_JWT"];
+const WEB3_STORAGE_TOKEN = process.env["WEB3_STORAGE_TOKEN"];
+const WEB3_STORAGE_SPACE_DID = process.env["WEB3_STORAGE_SPACE_DID"];
+const PROTOCOL_FEE_BPS = 200n; // 2% — split between the protocol fee and the organizer reward.
+
 interface StripeLikeForVerifier {
   paymentIntents: {
     retrieve(id: string): Promise<{ id: string; status: string; currency: string; amount: number }>;
@@ -82,6 +107,107 @@ async function getStripeClient(): Promise<StripeLikeForVerifier | null> {
   ).default;
   stripeClient = new Stripe(STRIPE_SECRET_KEY);
   return stripeClient;
+}
+
+// ---------------------------------------------------------------------------
+// Lazy on-chain signer — only initialized if WALLET_PRIVATE_KEY + RPC_URL
+// are both set. The wallet broadcasts mint + recordReward txs after a
+// successful verify. Returns null if not configured.
+// ---------------------------------------------------------------------------
+interface SimpleWalletClient {
+  sendTransaction(tx: {
+    to: `0x${string}`;
+    data: `0x${string}`;
+    value: bigint;
+  }): Promise<`0x${string}`>;
+  waitForReceipt(hash: `0x${string}`): Promise<{
+    logs: Array<{ topics: readonly `0x${string}`[]; data: `0x${string}` }>;
+  }>;
+}
+
+let walletClient: SimpleWalletClient | null = null;
+let walletInitFailed = false;
+async function getWalletClient(): Promise<SimpleWalletClient | null> {
+  if (walletInitFailed) return null;
+  if (walletClient) return walletClient;
+  if (!WALLET_PRIVATE_KEY || !RPC_URL) {
+    return null;
+  }
+  try {
+    const viem = await import("viem");
+    const accounts = await import("viem/accounts");
+    const account = accounts.privateKeyToAccount(WALLET_PRIVATE_KEY);
+    // Using a generic chain stub — the example does not pin a viem/chains
+    // import because the operator may target any chain. The transport's
+    // RPC URL is what actually picks the chain.
+    const transport = viem.http(RPC_URL);
+    const publicClient = viem.createPublicClient({ transport });
+    const chainId = await publicClient.getChainId();
+    const chain = {
+      id: chainId,
+      name: SETTLEMENT_CHAIN_NAME,
+      nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+      rpcUrls: { default: { http: [RPC_URL] } },
+    };
+    const wc = viem.createWalletClient({ account, chain, transport });
+    walletClient = {
+      async sendTransaction(tx) {
+        return wc.sendTransaction({ to: tx.to, data: tx.data, value: tx.value });
+      },
+      async waitForReceipt(hash) {
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        return { logs: receipt.logs };
+      },
+    };
+    return walletClient;
+  } catch (err) {
+    console.warn("Failed to initialize wallet client — on-chain mint/reward disabled:", err);
+    walletInitFailed = true;
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Lazy pinner — Pinata first, then Web3.Storage, otherwise null. Logged on
+// startup to make the chosen path obvious to operators.
+// ---------------------------------------------------------------------------
+interface SimplePinner {
+  pinJson(
+    obj: unknown,
+    opts?: { name?: string; metadata?: Record<string, string> },
+  ): Promise<{ cid: string; size: number }>;
+  pinBytes(
+    content: Uint8Array,
+    opts?: { name?: string; metadata?: Record<string, string> },
+  ): Promise<{ cid: string; size: number }>;
+  unpin(cid: string): Promise<void>;
+  isPinned(cid: string): Promise<boolean>;
+}
+
+let pinnerInstance: SimplePinner | null = null;
+let pinnerInitFailed = false;
+async function getPinner(): Promise<SimplePinner | null> {
+  if (pinnerInitFailed) return null;
+  if (pinnerInstance) return pinnerInstance;
+  if (!PINATA_JWT && !(WEB3_STORAGE_TOKEN && WEB3_STORAGE_SPACE_DID)) {
+    return null;
+  }
+  try {
+    const ipfs = await import("@atlasprotocol/ipfs");
+    if (PINATA_JWT) {
+      pinnerInstance = new ipfs.PinataPinner({ jwt: PINATA_JWT });
+    } else if (WEB3_STORAGE_TOKEN && WEB3_STORAGE_SPACE_DID) {
+      pinnerInstance = new ipfs.Web3StoragePinner({
+        apiToken: WEB3_STORAGE_TOKEN,
+        spaceDID: WEB3_STORAGE_SPACE_DID,
+      });
+    }
+    return pinnerInstance;
+  } catch (err) {
+    console.warn("Failed to initialize pinner — receipt pinning disabled:", err);
+    pinnerInitFailed = true;
+    return null;
+  }
 }
 
 const app = new Hono();
@@ -321,6 +447,24 @@ async function handlePurchase(c: Context, input: PurchaseHandlerInput): Promise<
     }
 
     const settled = getHold(hold.holdId);
+
+    // -----------------------------------------------------------------
+    // After verification: mint AtlasTicket NFT, record organizer reward,
+    // and pin the W3C VC receipt. Each step is env-gated and degrades
+    // gracefully when credentials are missing.
+    // -----------------------------------------------------------------
+    const paymentId = paymentIdFromChallenge(hold.challengeId);
+    const attendee = inferAttendee(payload, settled);
+    const integration = await runPostSettlementIntegrations({
+      paymentId,
+      eventId: event.id,
+      attendee,
+      hold,
+      offerType,
+      txHash: settled?.settledTxHash,
+      paymentIntentId: settled?.settledPaymentIntentId,
+    });
+
     return c.json({
       "atlas:status": "confirmed",
       "atlas:holdId": hold.holdId,
@@ -331,6 +475,10 @@ async function handlePurchase(c: Context, input: PurchaseHandlerInput): Promise<
         settled_at: settled?.settledAt,
         amount_usd_micros: hold.amountUsdMicros.toString(),
       },
+      "atlas:ticket": integration.ticket,
+      "atlas:reward": integration.reward,
+      "atlas:receipt": integration.receipt,
+      "atlas:cid": integration.cid,
     });
   }
 
@@ -432,6 +580,196 @@ function errMsg(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+// ---------------------------------------------------------------------------
+// Post-settlement integration: mint AtlasTicket NFT, record organizer
+// reward, generate + pin the W3C VC receipt. Each step is env-gated and
+// logs a warning when its credentials are missing rather than failing.
+// ---------------------------------------------------------------------------
+
+interface PostSettlementInputs {
+  paymentId: `0x${string}`;
+  eventId: string;
+  attendee: `0x${string}`;
+  hold: DemoHold;
+  offerType: AtlasPaymentMethodType;
+  txHash: string | undefined;
+  paymentIntentId: string | undefined;
+}
+
+interface PostSettlementOutput {
+  ticket: { tokenId?: string; txHash?: string; skipped?: string } | null;
+  reward: { amount?: string; recipient?: string; txHash?: string; skipped?: string } | null;
+  receipt: unknown;
+  cid: string | null;
+}
+
+async function runPostSettlementIntegrations(
+  input: PostSettlementInputs,
+): Promise<PostSettlementOutput> {
+  const ticket = await tryMintTicket(input);
+  const reward = await tryRecordReward(input);
+  const { receipt, cid } = await tryGenerateReceipt(input);
+  return { ticket, reward, receipt, cid };
+}
+
+async function tryMintTicket(input: PostSettlementInputs): Promise<PostSettlementOutput["ticket"]> {
+  if (!ATLAS_TICKET_ADDRESS) {
+    return {
+      skipped:
+        "ATLAS_TICKET_ADDRESS env var not set — set it to the AtlasTicket proxy on your settlement chain.",
+    };
+  }
+  const wallet = await getWalletClient();
+  if (!wallet) {
+    return {
+      skipped:
+        "WALLET_PRIVATE_KEY + RPC_URL env vars not set — cannot broadcast mint. Set both to enable.",
+    };
+  }
+  try {
+    const tx = buildMintTicketTx({
+      contract: ATLAS_TICKET_ADDRESS,
+      to: input.attendee,
+      eventId: BigInt(stableHashToBigInt(input.eventId)),
+      paymentId: input.paymentId,
+      tokenURI: `ipfs://placeholder/${input.eventId}`,
+    });
+    const hash = await wallet.sendTransaction(tx);
+    const receipt = await wallet.waitForReceipt(hash);
+    let tokenId: string | undefined;
+    for (const log of receipt.logs) {
+      const decoded = parseTicketMintedEvent(log);
+      if (decoded) {
+        tokenId = decoded.tokenId.toString();
+        break;
+      }
+    }
+    return tokenId !== undefined ? { tokenId, txHash: hash } : { txHash: hash };
+  } catch (err) {
+    console.warn("mint ticket failed:", err);
+    return { skipped: `mint failed: ${errMsg(err)}` };
+  }
+}
+
+async function tryRecordReward(
+  input: PostSettlementInputs,
+): Promise<PostSettlementOutput["reward"]> {
+  if (!REWARD_LEDGER_ADDRESS) {
+    return {
+      skipped:
+        "REWARD_LEDGER_ADDRESS env var not set — set it to the RewardLedger proxy on your settlement chain.",
+    };
+  }
+  const wallet = await getWalletClient();
+  if (!wallet) {
+    return {
+      skipped: "WALLET_PRIVATE_KEY + RPC_URL not set — cannot broadcast recordReward.",
+    };
+  }
+  // 2% organizer reward — matches the protocol's default organizer share.
+  // Production deployments would derive this from the protocol fee policy.
+  const rewardAmount = (input.hold.amountUsdMicros * PROTOCOL_FEE_BPS) / 10_000n;
+  try {
+    const tx = buildRecordRewardTx({
+      contract: REWARD_LEDGER_ADDRESS,
+      recipient: ORGANIZER_ADDRESS,
+      kind: RewardKind.Organizer,
+      amount: rewardAmount,
+      paymentId: input.paymentId,
+    });
+    const hash = await wallet.sendTransaction(tx);
+    const receipt = await wallet.waitForReceipt(hash);
+    for (const log of receipt.logs) {
+      const decoded = parseRewardRecordedEvent(log);
+      if (decoded) {
+        return {
+          amount: decoded.amount.toString(),
+          recipient: decoded.recipient,
+          txHash: hash,
+        };
+      }
+    }
+    return { amount: rewardAmount.toString(), recipient: ORGANIZER_ADDRESS, txHash: hash };
+  } catch (err) {
+    console.warn("recordReward failed:", err);
+    return { skipped: `recordReward failed: ${errMsg(err)}` };
+  }
+}
+
+async function tryGenerateReceipt(
+  input: PostSettlementInputs,
+): Promise<{ receipt: unknown; cid: string | null }> {
+  const pinner = await getPinner();
+  if (!pinner) {
+    console.warn(
+      "Receipt pinning disabled — set PINATA_JWT or (WEB3_STORAGE_TOKEN + WEB3_STORAGE_SPACE_DID) to enable.",
+    );
+  }
+  const isStripe = input.offerType === "stripe_spt";
+  try {
+    const result = await generateReceipt(
+      isStripe
+        ? {
+            holdId: input.hold.holdId,
+            eventId: input.eventId,
+            attendee: input.attendee,
+            organizerAddress: PLATFORM_DID ?? ORGANIZER_ADDRESS,
+            paymentMethod: "stripe_spt",
+            paymentIntentId: input.paymentIntentId ?? "pi_unknown",
+            amount: (Number(input.hold.amountUsdMicros) / 1_000_000).toFixed(2),
+            currency: "USD",
+            ...(pinner ? { pinner } : {}),
+          }
+        : {
+            holdId: input.hold.holdId,
+            eventId: input.eventId,
+            attendee: input.attendee,
+            organizerAddress: PLATFORM_DID ?? ORGANIZER_ADDRESS,
+            paymentMethod: "x402",
+            txHash: input.txHash ?? "0x",
+            settlementChain: SETTLEMENT_CHAIN_NAME,
+            amount: (Number(input.hold.amountUsdMicros) / 1_000_000).toFixed(6),
+            currency: "USDC",
+            ...(pinner ? { pinner } : {}),
+          },
+    );
+    return { receipt: result.receipt, cid: result.cid ?? null };
+  } catch (err) {
+    console.warn("generateReceipt failed:", err);
+    return { receipt: null, cid: null };
+  }
+}
+
+/** Stable-ish bigint from an event id string — keeps the demo deterministic. */
+function stableHashToBigInt(s: string): string {
+  let h = 0n;
+  for (const ch of s) {
+    h = (h * 131n + BigInt(ch.charCodeAt(0))) % 2n ** 64n;
+  }
+  return h.toString();
+}
+
+/** Derive a 32-byte paymentId deterministically from the challenge id. */
+function paymentIdFromChallenge(challengeId: string): `0x${string}` {
+  return keccak256(toHex(challengeId));
+}
+
+/**
+ * Best-effort attendee resolution. Real implementations should pull this
+ * from the agent's authenticated identity. The demo falls back to the
+ * MPP envelope's organizer field, which is at least a real address.
+ */
+function inferAttendee(payload: MppPayload, _settled: DemoHold | undefined): `0x${string}` {
+  const fromMeta = payload.metadata?.["attendee"];
+  if (typeof fromMeta === "string" && /^0x[a-fA-F0-9]{40}$/.test(fromMeta)) {
+    return fromMeta as `0x${string}`;
+  }
+  if (payload.organizer && /^0x[a-fA-F0-9]{40}$/.test(payload.organizer)) {
+    return payload.organizer as `0x${string}`;
+  }
+  return ORGANIZER_ADDRESS;
+}
+
 const server = serve({ fetch: app.fetch, port: PORT });
 console.log(`atlas dual-protocol-server listening on http://localhost:${PORT}`);
 console.log(`  manifest:  http://localhost:${PORT}/.well-known/atlas.json`);
@@ -442,6 +780,15 @@ console.log(
 );
 console.log(`  accepted chains: ${ACCEPTED_CHAINS.join(", ")}`);
 console.log(`  accept Stripe: ${ACCEPT_STRIPE ? "yes" : "no"}`);
+console.log(
+  `  mint AtlasTicket: ${ATLAS_TICKET_ADDRESS && WALLET_PRIVATE_KEY && RPC_URL ? "yes" : "no (set ATLAS_TICKET_ADDRESS + WALLET_PRIVATE_KEY + RPC_URL)"}`,
+);
+console.log(
+  `  record reward:    ${REWARD_LEDGER_ADDRESS && WALLET_PRIVATE_KEY && RPC_URL ? "yes" : "no (set REWARD_LEDGER_ADDRESS + WALLET_PRIVATE_KEY + RPC_URL)"}`,
+);
+console.log(
+  `  pin receipt:      ${PINATA_JWT ? "yes (Pinata)" : WEB3_STORAGE_TOKEN && WEB3_STORAGE_SPACE_DID ? "yes (Web3.Storage)" : "no (set PINATA_JWT or WEB3_STORAGE_TOKEN + WEB3_STORAGE_SPACE_DID)"}`,
+);
 
 process.on("SIGINT", () => {
   console.log("shutting down");

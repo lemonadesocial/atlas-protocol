@@ -197,6 +197,31 @@ Any `Pinner` works: `PinataPinner`, `Web3StoragePinner`, `FilebasePinner`, or `K
 
 > **Breaking change in 0.4.0.** `generateReceipt` was previously sync and returned an `AtlasReceipt` directly. It is now `async` and returns `{ receipt, cid? }`. Migrate by adding `await` and destructuring `receipt`.
 
+## End-to-end flow
+
+Below is the end-to-end purchase flow exercised by `examples/dual-protocol-server` and the `end-to-end.test.ts` test. The SDK ships the primitives — your server composes them into a single endpoint. The same `paymentId` flows unchanged through verify → mint → reward → receipt; the contracts revert on a second mint or `recordReward` for the same `paymentId`, so retried settlement jobs are safe by construction.
+
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Server
+  participant Chain as Chain (FeeRouter / AtlasTicket / RewardLedger)
+  participant IPFS as IPFS (Pinner)
+
+  Agent->>Server: GET /events/:id/buy
+  Server-->>Agent: 402 (manifest + challenge)
+  Agent->>Chain: settle(organizer, amount, paymentId)
+  Agent->>Server: POST /events/:id/buy (credential)
+  Server->>Chain: verify settlement (eth_call FeeRouter.isSettled)
+  Server->>Chain: mint(to, eventId, paymentId, tokenURI)
+  Server->>Chain: recordReward(organizer, ORGANIZER, fee, paymentId)
+  Server->>IPFS: pinJson(receipt)
+  IPFS-->>Server: cid
+  Server-->>Agent: 200 { receipt, cid }
+```
+
+The Stripe SPT rail substitutes `stripe.paymentIntents.retrieve(...)` for the on-chain settlement check; everything downstream (mint, reward, pin) is identical.
+
 ## Approval-required events
 
 For events whose ticket type is `approval_required`, the server returns a 202 envelope instead of 402. The agent submits a join request, then receives a fresh 402 challenge once the host approves.
