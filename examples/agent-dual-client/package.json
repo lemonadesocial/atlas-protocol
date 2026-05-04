@@ -20,8 +20,8 @@
   },
   "dependencies": {
     "@atlasprotocol/mpp": "workspace:*",
-    "stripe": "^14.0.0",
-    "viem": "^2.0.0"
+    "stripe": "^22.1.0",
+    "viem": "^2.48.8"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

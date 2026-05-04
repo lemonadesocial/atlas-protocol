@@ -22,10 +22,10 @@
     "@atlasprotocol/ipfs": "workspace:*",
     "@atlasprotocol/mpp": "workspace:*",
     "@atlasprotocol/server-sdk": "workspace:*",
-    "@hono/node-server": "^1.13.0",
-    "hono": "^4.6.0",
-    "stripe": "^14.0.0",
-    "viem": "^2.0.0"
+    "@hono/node-server": "^2.0.1",
+    "hono": "^4.12.16",
+    "stripe": "^22.1.0",
+    "viem": "^2.48.8"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

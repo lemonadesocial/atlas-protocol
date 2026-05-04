@@ -55,7 +55,7 @@
     "jose": "^5.9.0"
   },
   "peerDependencies": {
-    "viem": "^2.0.0"
+    "viem": "^2.48.8"
   },
   "peerDependenciesMeta": {
     "viem": {
@@ -65,7 +65,7 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.6.3",
-    "viem": "^2.0.0",
+    "viem": "^2.48.8",
     "vitest": "^2.0.0"
   }
 }
