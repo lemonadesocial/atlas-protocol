@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.6.0...server-sdk-v0.6.1) (2026-05-04)
+
+
+### Bug Fixes
+
+* **server-sdk:** add npm homepage link ([9d172ec](https://github.com/lemonadesocial/atlas-protocol/commit/9d172ec84ce15014b6770b9c4e3e383ecd2ec11f))
+
 ## [0.6.0](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.5.0...server-sdk-v0.6.0) (2026-05-03)
 
 

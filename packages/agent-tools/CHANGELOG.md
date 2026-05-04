@@ -5,6 +5,13 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this package adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3](https://github.com/lemonadesocial/atlas-protocol/compare/agent-tools-v0.2.2...agent-tools-v0.2.3) (2026-05-04)
+
+
+### Bug Fixes
+
+* **agent-tools:** add npm homepage link ([5869110](https://github.com/lemonadesocial/atlas-protocol/commit/586911032685cb7a70e6e5c41b82fd5f87ee398d))
+
 ## [0.2.2](https://github.com/lemonadesocial/atlas-protocol/compare/agent-tools-v0.2.1...agent-tools-v0.2.2) (2026-05-03)
 
 
