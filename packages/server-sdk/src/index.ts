@@ -1,6 +1,7 @@
 export * from "./atlas-ticket.js";
 export * from "./chain-specs.js";
 export * from "./challenge.js";
+export * from "./clients/index.js";
 export * from "./config.js";
 export * from "./deployments.js";
 export * from "./fee-router.js";

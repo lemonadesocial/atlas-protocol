@@ -150,6 +150,54 @@ The four routes are intentionally small. To plug your own platform in:
 5. Keep idempotency-key handling (the example stores it in-memory; production must use the same store as your hold table so retries return the same hold).
 6. Set `ATLAS_TICKET_ADDRESS`, `REWARD_LEDGER_ADDRESS`, and `PINATA_JWT` (or the Web3.Storage pair) to enable the on-chain mint + reward + pinned-receipt integration the example performs.
 
+## ATLAS-managed services (opt-in alternative)
+
+The example above runs IPFS pinning + on-chain mint + reward recording **in-process** — the platform owns the pinner credentials, the hot wallet, and the RPC. That's the sovereign path.
+
+For platforms that don't want to operate any of that infrastructure, the SDK ships a thin client that delegates all four steps to a hosted [`atlas-registry`](https://github.com/lemonadesocial/atlas-registry) deployment:
+
+```ts
+import { createAtlasManagedClient } from '@atlasprotocol/server-sdk';
+
+const atlas = createAtlasManagedClient({
+  baseUrl: process.env.ATLAS_REGISTRY_URL!,    // e.g. https://registry.atlas-protocol.org
+  platformAuthToken: process.env.ATLAS_PLATFORM_TOKEN!, // forwarded as Bearer
+});
+
+// 1. After generating the W3C VC receipt:
+const pinned   = await atlas.pinReceipt(receipt);
+const verified = await atlas.verifyReceipt({ urn: pinned.urn, cid: pinned.cid });
+
+// 2. Have the registry settle on-chain on the platform's behalf:
+const settled  = await atlas.settle({
+  platformDomain: 'atlas.bjc.events',
+  chain:          'base',
+  organizer:      '0x...',
+  totalAmount:    25_000_000n, // 25 USDC at 6 decimals
+  paymentId:      '0x...',
+  platformFees:   [],
+});
+
+// 3. And record organizer / attendee / referral rewards:
+const rewards = await atlas.recordRewards({
+  platformDomain: 'atlas.bjc.events',
+  paymentId:      '0x...',
+  recipients: [
+    { recipient: '0x...', kind: 'organizer', amount: 600_000n },
+  ],
+});
+```
+
+A runnable end-to-end script lives at [`src/atlas-managed-demo.ts`](./src/atlas-managed-demo.ts):
+
+```bash
+ATLAS_REGISTRY_URL=https://registry.atlas-protocol.org \
+ATLAS_PLATFORM_TOKEN=tkn_xxx \
+pnpm tsx src/atlas-managed-demo.ts
+```
+
+The two paths are mutually exclusive — pick one per settlement. Direct on-chain integration (`buildSettleTx` / `buildRecordRewardTx`) gives full sovereignty; the managed client trades that for zero ops surface area.
+
 ## What this example does NOT do (yet)
 
 - **Replay protection on the MPP credential layer.** The SDK's `verifyMppCredential` + `InMemoryReplayStore` are available; production deployments should wire them in.
