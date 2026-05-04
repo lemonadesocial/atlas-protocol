@@ -3,6 +3,7 @@
   "version": "0.2.2",
   "description": "Agent-side ATLAS Protocol tooling for LangChain and MCP. Speak ATLAS from any agent runtime.",
   "license": "MIT",
+  "homepage": "https://github.com/lemonadesocial/atlas-protocol/tree/main/packages/agent-tools#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/lemonadesocial/atlas-protocol.git",
