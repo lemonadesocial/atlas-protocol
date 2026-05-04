@@ -43,10 +43,12 @@ jobs:
         if: ${{ steps.release.outputs.releases_created }}
 
       # Authentication via OIDC trusted publishers — see https://docs.npmjs.com/trusted-publishers
+      # pnpm publish (not npm publish) rewrites the pnpm `workspace:` protocol in dependencies
+      # to concrete semver ranges so external consumers can install the published packages.
       - name: Publish released packages
         if: ${{ steps.release.outputs.releases_created }}
         run: |
           echo '${{ steps.release.outputs.paths_released }}' | jq -r '.[]' | while read path; do
             echo "Publishing $path"
-            (cd "$path" && npm publish --provenance --access public)
+            (cd "$path" && pnpm publish --no-git-checks --provenance --access public)
           done
