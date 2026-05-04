@@ -3,6 +3,7 @@
   "version": "0.3.1",
   "description": "Deterministic CID generation and pinning service abstractions for the ATLAS Protocol.",
   "license": "MIT",
+  "homepage": "https://github.com/lemonadesocial/atlas-protocol/tree/main/packages/ipfs#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/lemonadesocial/atlas-protocol.git",
