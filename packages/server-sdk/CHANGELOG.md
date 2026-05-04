@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.6.1...server-sdk-v0.7.0) (2026-05-04)
+
+
+### Features
+
+* **server-sdk:** add ATLAS-managed services client (pin, verify, settle, recordRewards) ([#61](https://github.com/lemonadesocial/atlas-protocol/issues/61)) ([d98afaa](https://github.com/lemonadesocial/atlas-protocol/commit/d98afaab091c17aaa666b3a641efa6cb0f0bb02d))
+
 ## [0.6.1](https://github.com/lemonadesocial/atlas-protocol/compare/server-sdk-v0.6.0...server-sdk-v0.6.1) (2026-05-04)
 
 
