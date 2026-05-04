@@ -109,6 +109,68 @@ pnpm add stripe
 
 The cross-cutting invariants (paymentId carries unchanged through verify → mint → reward → receipt; replays are rejected; pinner is called exactly once) are exercised by [`packages/server-sdk/src/__tests__/end-to-end.test.ts`](./packages/server-sdk/src/__tests__/end-to-end.test.ts), which composes the same SDK primitives the example server uses.
 
+---
+
+## Phase 5.3 — ATLAS-managed services
+
+Phase 5.3 introduces an operator-side path for platforms that don't want to run their own IPFS pinner, treasury hot wallet, or RPC clients. The ATLAS registry deployment runs the pinner, holds the settlement funds, and broadcasts the on-chain calls; platforms call four HTTP endpoints and get back a confirmed result.
+
+The registry exposes four `/atlas/v1/*` endpoints (full request/response shapes in [`01-whitepaper/docs/01-PROTOCOL-SPEC.md`](./01-whitepaper/docs/01-PROTOCOL-SPEC.md)):
+
+| Endpoint | Purpose | Spec |
+|----------|---------|------|
+| `POST /atlas/v1/receipts/pin` | Pin a receipt's proof-of-issuance to IPFS, return its URN + CID. | [05-IPFS-DATA-LAYER §6](./01-whitepaper/docs/05-IPFS-DATA-LAYER.md) |
+| `POST /atlas/v1/receipts/verify` | Re-canonicalise + hash a receipt and confirm it matches a pinned proof. Accepts either the full receipt or a `{ urn, cid }` lookup. | [05-IPFS-DATA-LAYER §6](./01-whitepaper/docs/05-IPFS-DATA-LAYER.md) |
+| `POST /atlas/v1/settlements/settle` | Execute a `FeeRouter.settle()` call from the ATLAS treasury hot wallet on the platform's behalf. Idempotent on `paymentId`. | [03-SETTLEMENT-SPEC §10](./01-whitepaper/docs/03-SETTLEMENT-SPEC.md) |
+| `POST /atlas/v1/rewards/record` | Accrue organizer / attendee / referral rewards via `RewardLedger.recordRewards()` on Base (the canonical reward chain). Recipients claim directly via `claim()` / `claimTo()`. | [03-SETTLEMENT-SPEC §10](./01-whitepaper/docs/03-SETTLEMENT-SPEC.md) |
+
+The SDK ships a typed client wrapping all four:
+
+```bash
+pnpm add @atlasprotocol/server-sdk@^0.7.0
+```
+
+```ts
+import { createAtlasManagedClient } from '@atlasprotocol/server-sdk';
+
+const atlas = createAtlasManagedClient({
+  baseUrl: 'https://registry.atlas-protocol.org',
+  platformAuthToken: process.env.ATLAS_PLATFORM_TOKEN, // optional
+});
+
+// After verifying the buyer's payment proof, hand settlement to ATLAS:
+const settled = await atlas.settle({
+  platformDomain: 'atlas.bjc.events',
+  chain: 'base',
+  organizer: organizerAddress,
+  totalAmount: 50_000_000n,            // 50 USDC, 6 decimals
+  paymentId: holdId,                   // doubles as idempotency key
+  platformFees: [{ recipient: protocolTreasury, amount: 250_000n }],
+});
+
+// Record rewards (Base canonical chain):
+await atlas.recordRewards({
+  platformDomain: 'atlas.bjc.events',
+  paymentId: holdId,
+  recipients: [
+    { recipient: organizerAddress, kind: 'organizer', amount: 600_000n },
+    { recipient: attendeeAddress,  kind: 'attendee',  amount: 200_000n },
+  ],
+});
+
+// Pin + verify the W3C VC receipt:
+const { urn, cid } = await atlas.pinReceipt(receipt);
+const { valid }    = await atlas.verifyReceipt({ urn, cid });
+```
+
+See [`packages/server-sdk/README.md`](./packages/server-sdk/README.md) for the full client API and [`packages/server-sdk/src/__tests__/atlas-managed-integration.test.ts`](./packages/server-sdk/src/__tests__/atlas-managed-integration.test.ts) for an end-to-end mocked-fetch lifecycle.
+
+**Auth model.** Receipt endpoints (`pin`, `verify`) identify the calling platform from the receipt's URN domain — the registry resolves the URN against `registered_platforms` and verifies the caller. Settlement endpoints (`settle`, `recordRewards`) take the platform identity in the request body via `platform_domain` and authenticate via the optional `Authorization: Bearer <platformAuthToken>` header.
+
+**Sovereignty is preserved.** Platforms that want to keep control of their own treasury and signing keys can still call the contracts directly — `buildSettleTx` and `buildRecordRewardTx` continue to be supported alongside the managed path. The trade-off is operational: managed mode shifts the burden of key custody, RPC reliability, and gas funding to the registry operator, at the cost of trusting that operator with broadcast timing.
+
+---
+
 ## Quick reference
 
 **For agent developers:**

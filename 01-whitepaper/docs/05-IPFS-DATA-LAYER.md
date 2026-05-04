@@ -210,7 +210,32 @@ If all three checks pass, the receipt is authentic. The IPFS layer never reveals
 
 ATLAS operates a pinning service for both event listings and receipt proofs-of-issuance, subsidized by the 0.5% protocol fee (see [09-FEE-ECONOMICS-SPEC](./09-FEE-ECONOMICS-SPEC.md)). Pinning is free at the point of use for any compliant platform. Platforms may also self-pin to additional clusters; the protocol does not require exclusive pinning to ATLAS infrastructure.
 
-**Related specs:** [02-SCHEMAS §5](./02-SCHEMAS.md#5-atlascredential) (AtlasCredential schema), [01-PROTOCOL-SPEC §4](./01-PROTOCOL-SPEC.md) (receipt format and verification), [12-SECURITY-PRIVACY-SPEC §7](./12-SECURITY-PRIVACY-SPEC.md#7-data-privacy) (PII boundaries).
+### 6.3 Managed Pinning Endpoint (Phase 5.3+)
+
+Phase 5.3 exposes the pinning service as an HTTP endpoint on the registry, so platforms that don't want to run their own IPFS pinner can offload pinning entirely:
+
+```
+POST /atlas/v1/receipts/pin
+```
+
+The body is `{ "receipt": <full AtlasReceipt VC> }`. The registry computes the canonical hash of the receipt body, builds the proof-of-issuance JSON document (Section 6, above), pins **only that document** to its IPFS cluster, and returns the URN + CID. The full receipt is never transmitted to IPFS — the privacy boundary in Section 1.1 is preserved end-to-end. The full request/response contract, including the companion `POST /atlas/v1/receipts/verify` endpoint, is normatively defined in [01-PROTOCOL-SPEC §9](./01-PROTOCOL-SPEC.md).
+
+The proof-of-issuance verification flow is unchanged: a verifier presents the full receipt, the registry (or any verifier) re-canonicalises the receipt body, computes its SHA-256, and compares against the `receipt_hash` in the pinned proof. The signature is verified against the issuer's manifest signing key (`/.well-known/atlas.json`), which is platform-controlled and never held by the registry. Three checks pass → receipt is authentic.
+
+### 6.4 Supported Pinner Backends
+
+The reference pinner abstraction in [`@atlasprotocol/ipfs`](../../packages/ipfs) supports four backends. Platforms running their own pinner pick one; the ATLAS-operated registry can run any of them or a heterogeneous mix.
+
+| Backend | Type | Notes |
+|---------|------|-------|
+| Pinata | Hosted | Default for the reference deployment. Per-file pinning with billing-tier replication. |
+| web3.storage (w3up) | Hosted | UCAN-authenticated client. Includes Filecoin storage deals on top of IPFS replication. |
+| Filebase | Hosted | S3-compatible API mapped onto IPFS. Useful when an existing S3 toolchain is in place. |
+| Self-hosted Kubo | Self-operated | Reference IPFS daemon (Section 4.3). Requires running ipfs-cluster (Section 4.1) for replication. |
+
+The pinner interface (`Pinner.pin(content) → { cid }`) is identical across backends, so platforms can swap backends without changing receipt-issuance code. The managed pinning endpoint hides the backend choice from the caller entirely — the response contract is the same regardless of which backend the registry happens to use.
+
+**Related specs:** [02-SCHEMAS §5](./02-SCHEMAS.md#5-atlascredential) (AtlasCredential schema), [01-PROTOCOL-SPEC §4](./01-PROTOCOL-SPEC.md) (receipt format and verification), [01-PROTOCOL-SPEC §9](./01-PROTOCOL-SPEC.md) (managed pin/verify endpoints), [12-SECURITY-PRIVACY-SPEC §7](./12-SECURITY-PRIVACY-SPEC.md#7-data-privacy) (PII boundaries).
 
 ---
 

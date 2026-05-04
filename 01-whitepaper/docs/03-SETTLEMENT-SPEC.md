@@ -291,6 +291,65 @@ Three failure categories and their handling.
 
 ---
 
+## 10. Integration Paths (Phase 5.3+)
+
+Phase 5.3 formalises two integration paths for platforms accepting ATLAS settlements. They are not alternatives at the protocol level — both speak to the same on-chain contracts on the same chains — they differ only in **who operates the treasury, signing keys, and RPC layer**. The choice is per-platform, not per-event, and a platform MAY change paths between releases without invalidating any existing on-chain state.
+
+### 10.1 Canonical Path: ATLAS-Managed Services
+
+`POST /atlas/v1/settlements/settle` is the canonical integration path for platforms in Phase 5.3 and later. The platform sends a JSON body — settlement chain, organizer address, total amount, paymentId, fee splits — and the registry's treasury hot wallet broadcasts `FeeRouter.settle()` on the platform's behalf, returning a confirmed `txHash` synchronously. Reward accrual works the same way via `POST /atlas/v1/rewards/record`, which calls `RewardLedger.recordRewards()` on the canonical reward chain (Base — see Section 1).
+
+The full request/response shapes, error envelope, and authentication model are normatively defined in [01-PROTOCOL-SPEC §9](./01-PROTOCOL-SPEC.md).
+
+What the platform offloads to the registry operator:
+
+- **Hot wallet custody.** The treasury wallet that calls `FeeRouter.settle()` is the registry's, not the platform's. The platform never holds platform-side USDC for settlement.
+- **Gas funding.** The registry pays gas in the chain's native asset and recoups via the protocol fee.
+- **RPC reliability.** The registry maintains the primary + fallback RPC pool and rotates on health failures.
+- **IPFS pinning.** Receipt proofs-of-issuance are pinned to the registry's IPFS cluster (see Section 6 of [05-IPFS-DATA-LAYER](./05-IPFS-DATA-LAYER.md)).
+
+What the platform retains:
+
+- **Domain identity and signing keys.** Receipts are signed by the platform's `signing_keys` JWKs as declared in the platform's `/.well-known/atlas.json`. The registry never holds receipt-signing keys.
+- **Fee policy.** The `FeeSplit[]` array passed to `settle()` is decided per-call by the platform; the registry forwards it verbatim.
+- **Refund authority.** `reverseSettle(holdId)` is initiated by the platform via the same managed surface.
+
+### 10.2 Sovereign Path: Direct Contract Calls
+
+Platforms that prefer to operate their own treasury, signing keys, and RPC infrastructure can continue to call the contracts directly. The SDK ships unsigned-transaction builders for each contract:
+
+- `buildSettleTx({ chain, organizer, totalAmount, paymentId, platformFees })` → `{ to, data, value }` for the platform to sign with its own wallet and broadcast through its own RPC.
+- `buildRecordRewardTx({ paymentId, recipients })` → unsigned `RewardLedger.recordRewards()` call data.
+- `buildMintTicketTx(...)` → unsigned `AtlasTicket` mint for the NFT chain.
+
+The platform retains full custody of its hot wallet, full discretion over RPC selection and gas pricing, and full control of broadcast timing. The trade-off is operational: the platform now has to fund gas, monitor RPC health, handle retries on chain congestion (Section 9), and run its own IPFS pinner if it wants pinned receipts.
+
+The on-chain idempotency contract (`isSettled(paymentId)` rejects duplicate settlement, `recordRewards()` rejects duplicate accrual for the same `paymentId`) is identical to the managed path. Sovereign and managed broadcasts cannot collide on-chain, so a platform MAY mix paths during migration — for example, settling sovereign on one chain while testing managed on another.
+
+### 10.3 Trade-off Summary
+
+| Concern | Managed (`/atlas/v1/...`) | Sovereign (`buildSettleTx` etc.) |
+|---------|--------------------------|----------------------------------|
+| Hot-wallet custody | Registry | Platform |
+| Gas funding | Registry (recouped via fee) | Platform |
+| RPC reliability | Registry | Platform |
+| IPFS pinning | Registry-operated cluster | Platform's own pinner |
+| Receipt-signing keys | Platform | Platform |
+| Fee policy | Platform | Platform |
+| Trust assumption | Trust registry's broadcast timing + key custody | None beyond chain |
+| Latency | One synchronous HTTP round-trip + on-chain confirmation | Direct broadcast — same on-chain confirmation |
+| Failure surface | HTTP error envelope (typed in SDK) | RPC errors directly from the chain |
+
+Most platforms ship faster on the managed path and migrate to sovereign only if their threat model or compliance posture requires platform-controlled keys. Both paths are first-class and supported indefinitely — the protocol does not deprecate sovereign contract calls.
+
+### 10.4 Rewards Claim Flow
+
+Reward **accrual** flows through whichever path the platform chose at settlement time. Reward **claiming** is unchanged across both paths and does not flow through the registry: recipients call `RewardLedger.claim()` (claim to `msg.sender`) or `RewardLedger.claimTo(recipient)` (claim to a different address, e.g. a custodial wallet) directly on the canonical reward chain (Base). The registry has no role in the claim path — it cannot withhold or front-run a claim, and recipients do not need a registered platform identity to claim.
+
+The 14-day timelock on accruals ([04-SMART-CONTRACTS-SPEC §5](./04-SMART-CONTRACTS-SPEC.md)) and the `reverseRewards(holdId)` claw-back semantics (Section 6.6) apply identically to both paths.
+
+---
+
 ## References
 
 - ARCHITECTURE.md, Section 3: Settlement Architecture
