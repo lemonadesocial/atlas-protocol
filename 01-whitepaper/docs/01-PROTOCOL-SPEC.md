@@ -538,6 +538,199 @@ Data privacy: Attendee PII encrypted at rest (AES-256-GCM). PII never stored in 
 
 ---
 
+## 9. ATLAS-Managed Services API
+
+Sections 1–8 of this spec describe the **agent ↔ platform** contract — every endpoint is served by the platform itself, and the platform is responsible for IPFS pinning, on-chain settlement, and reward accrual. Phase 5.3 adds a complementary **platform ↔ registry** contract: four endpoints that an ATLAS registry deployment exposes so platforms can offload pinning, settlement, and reward recording to a registry operator instead of running that infrastructure themselves.
+
+The four endpoints live under `/atlas/v1/*` on the registry deployment. They are entirely opt-in — sovereign platforms can keep calling the contracts directly via the SDK helpers and never touch this surface (see [03-SETTLEMENT-SPEC §10](./03-SETTLEMENT-SPEC.md)).
+
+### 9.1 Endpoint Summary
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/atlas/v1/receipts/pin` | Publish a receipt's proof-of-issuance to IPFS. |
+| `POST` | `/atlas/v1/receipts/verify` | Re-canonicalise a receipt and confirm it matches a pinned proof. |
+| `POST` | `/atlas/v1/settlements/settle` | Broadcast `FeeRouter.settle()` from the registry's treasury wallet. |
+| `POST` | `/atlas/v1/rewards/record` | Accrue rewards via `RewardLedger.recordRewards()` on Base. |
+
+All requests use `Content-Type: application/json` and respond with JSON. Errors use the envelope from §9.6.
+
+### 9.2 `POST /atlas/v1/receipts/pin`
+
+Pins the proof-of-issuance for a single receipt (see [05-IPFS-DATA-LAYER §6](./05-IPFS-DATA-LAYER.md)). The registry computes the canonical hash of the receipt body, signs/wraps the proof-of-issuance JSON, pins that document to its IPFS cluster, and returns the resulting URN + CID. The full receipt is **not** pinned — only the proof-of-issuance.
+
+**Request body:**
+
+```json
+{
+  "receipt": { /* full AtlasReceipt VC, see Section 4 */ }
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "urn": "urn:atlas:receipt:rec_abc123",
+  "cid": "bafkreigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+  "pinned_at": "2026-04-14T21:05:31Z"
+}
+```
+
+The `urn` is the canonical receipt identifier the platform stores and references. The `cid` is the IPFS CID of the proof-of-issuance document.
+
+### 9.3 `POST /atlas/v1/receipts/verify`
+
+Verifies that a receipt is authentic and pinned. The body is one of two shapes — full receipt or lookup tuple:
+
+**Request body — full receipt:**
+
+```json
+{ "receipt": { /* full AtlasReceipt VC */ } }
+```
+
+The registry re-canonicalises the receipt, recomputes its hash, fetches the matching proof-of-issuance from IPFS, and verifies the signature against the issuer's manifest signing key.
+
+**Request body — lookup tuple:**
+
+```json
+{
+  "urn": "urn:atlas:receipt:rec_abc123",
+  "cid": "bafkreigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+}
+```
+
+Lookup-tuple verification confirms that `cid` is pinned and resolves to a proof-of-issuance whose URN matches `urn`. It does **not** re-verify the receipt body's hash — only the existence of the pinned proof.
+
+**Response (200):**
+
+```json
+{
+  "valid": true,
+  "signature_verified": true,
+  "hash_match": true,
+  "errors": []
+}
+```
+
+`valid` is the conjunction of the other booleans. `errors` is included when `valid` is `false` and lists the specific check(s) that failed (signature mismatch, hash mismatch, manifest unreachable, etc.).
+
+### 9.4 `POST /atlas/v1/settlements/settle`
+
+Broadcasts `FeeRouter.settle()` on the chosen settlement chain from the registry's treasury hot wallet, with the platform's `FeeSplit[]` array as configured by the caller. Idempotent on `payment_id`: the registry deduplicates first against its database (a recorded `paymentId` returns the cached response) and then against the on-chain `isSettled(paymentId)` view (a chain hit short-circuits the broadcast). Either path returns the same response shape, so the caller cannot distinguish a fresh broadcast from a replay.
+
+**Request body:**
+
+```json
+{
+  "platform_domain": "atlas.bjc.events",
+  "chain": "base",
+  "organizer": "0x1111111111111111111111111111111111111111",
+  "total_amount": "50000000",
+  "payment_id": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "platform_fees": [
+    { "recipient": "0x3333333333333333333333333333333333333333", "amount": "1000000" }
+  ]
+}
+```
+
+All amount fields are **strings of decimal digits** in the chain's native USDC/USDM base units (6 decimals). The SDK serialises `bigint` inputs to this format automatically. `payment_id` is the same `holdId` / `paymentId` that propagates through the platform's verify → mint → reward → receipt pipeline — see [03-SETTLEMENT-SPEC §10.2](./03-SETTLEMENT-SPEC.md).
+
+**Response (200):**
+
+```json
+{
+  "paymentId": "0xffffff...",
+  "chain": "base",
+  "txHash": "0xdeadbeef...",
+  "status": "confirmed",
+  "explorerUrl": "https://basescan.org/tx/0xdeadbeef..."
+}
+```
+
+`status` is one of `"submitted"` (broadcast, awaiting confirmation), `"confirmed"` (mined past the chain's confirmation depth), or `"failed"` (revert / RPC failure — `txHash` may be `null`). `explorerUrl` is `null` when no `txHash` is available.
+
+### 9.5 `POST /atlas/v1/rewards/record`
+
+Accrues organizer / attendee / referral rewards via `RewardLedger.recordRewards()`. The reward chain is **canonically Base** — `RewardLedger` v1 ships only on Base mainnet and Base Sepolia ([03-SETTLEMENT-SPEC §1](./03-SETTLEMENT-SPEC.md)), regardless of which chain the original settlement landed on. Multi-chain reward accrual is Phase 7+.
+
+**Request body:**
+
+```json
+{
+  "platform_domain": "atlas.bjc.events",
+  "payment_id": "0xffffff...",
+  "recipients": [
+    { "recipient": "0x5555...", "kind": "organizer", "amount": "600000" },
+    { "recipient": "0x6666...", "kind": "attendee",  "amount": "200000" },
+    { "recipient": "0x7777...", "kind": "referral",  "amount": "100000" }
+  ]
+}
+```
+
+`kind` is one of `"organizer"`, `"attendee"`, `"referral"`. Recipients **claim** rewards directly from `RewardLedger.claim()` / `RewardLedger.claimTo()` — the claim path is unchanged by 5.3 and does not flow through the registry.
+
+**Response (200):**
+
+```json
+{
+  "paymentId": "0xffffff...",
+  "chain": "base",
+  "txHashes": ["0xrewardtx1"],
+  "status": "confirmed",
+  "explorerUrls": ["https://basescan.org/tx/0xrewardtx1"]
+}
+```
+
+`status` MAY be `"partial_failure"` when some recipients accrue successfully and others revert; in that case `error` carries the per-recipient failure summary.
+
+### 9.6 Error Envelope
+
+Non-2xx responses share the registry's standard error envelope:
+
+```json
+{
+  "error": {
+    "code": "RECEIPT_INVALID",
+    "message": "Receipt signature did not verify against issuer manifest",
+    "details": { "issuer": "did:web:bjc.events" }
+  }
+}
+```
+
+| HTTP Status | Class | Notes |
+|-------------|-------|-------|
+| 400 / 422 | Validation | Malformed request, unknown chain, non-digit amount, etc. |
+| 401 / 403 | Auth | Missing or rejected `Authorization` header / unregistered domain. |
+| 404 | Not found | Pinned proof-of-issuance not found (verify lookup). |
+| 409 | Conflict | `paymentId` already settled with different parameters. |
+| 422 | `RECEIPT_INVALID` | Signature or canonical-hash check failed. |
+| 503 | Server | RPC pool exhausted, IPFS cluster down, treasury wallet drained. |
+
+The SDK client maps 4xx → `AtlasManagedRequestError`, 5xx → `AtlasManagedServerError`, fetch rejection → `AtlasManagedNetworkError`. The envelope's `code` is preserved on the thrown error so callers can branch on it without parsing message strings.
+
+### 9.7 Authentication
+
+Two authentication paths, depending on which endpoint is called.
+
+- **Receipt endpoints (`/atlas/v1/receipts/pin`, `/atlas/v1/receipts/verify`)** identify the calling platform from the receipt's URN domain. The registry parses the receipt's `issuer` DID (or, in the lookup-tuple case, the URN) to derive the platform domain, looks that domain up in its `registered_platforms` table, and verifies the call against the registered platform's credentials. No additional body field carries the platform identity.
+- **Settlement endpoints (`/atlas/v1/settlements/settle`, `/atlas/v1/rewards/record`)** take the platform identity in the request body via `platform_domain`. The registry verifies that domain against `registered_platforms` and authenticates the call via the optional `Authorization: Bearer <platformAuthToken>` header.
+
+Registry deployments MAY operate without bearer tokens for local development, in which case `platform_domain` alone identifies the caller. Production deployments SHOULD require bearer tokens.
+
+### 9.8 SDK
+
+The reference TypeScript client is `createAtlasManagedClient` in [`@atlasprotocol/server-sdk`](../../packages/server-sdk/README.md) (≥ 0.7.0). It wraps all four endpoints, normalises `bigint` amounts to decimal strings at the wire boundary, and surfaces the error envelope as the typed error hierarchy described in §9.6.
+
+### 9.9 Cross-References
+
+- Settlement contract semantics (Phase 5 `FeeSplit[]`, `MAX_TOTAL_PLATFORM_FEES_BPS`, refund flow): [03-SETTLEMENT-SPEC §6](./03-SETTLEMENT-SPEC.md), [04-SMART-CONTRACTS-SPEC §3](./04-SMART-CONTRACTS-SPEC.md).
+- Reward chain (canonical Base, Phase 7+ multi-chain): [03-SETTLEMENT-SPEC §1](./03-SETTLEMENT-SPEC.md).
+- Proof-of-issuance pinning model: [05-IPFS-DATA-LAYER §6](./05-IPFS-DATA-LAYER.md).
+- Sovereign integration path (direct contract calls): [03-SETTLEMENT-SPEC §10](./03-SETTLEMENT-SPEC.md).
+
+---
+
 ## Appendix A: Settlement Chains
 
 | Chain | Chain ID | Type | USDC Source | Tx Fee | Block Time |
