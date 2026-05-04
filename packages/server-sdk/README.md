@@ -454,6 +454,86 @@ The contract is deployed via Nick's deterministic CREATE2 factory with salt
 at the repo root and are exposed via `getRewardLedgerAddress(chainSlug)` /
 `getRewardLedgerContractAddress(chainSlug)`.
 
+## ATLAS-managed services
+
+For platforms that don't want to operate their own IPFS pinner, hot wallet, or RPC, the SDK ships an operator-side client that delegates receipt pinning, settlement, and reward recording to a hosted `atlas-registry` deployment. The four primitives below mirror the four registry endpoints — platforms call them after issuing a 200 to the agent, exactly where they would otherwise call `pinJson(...)`, `buildSettleTx(...)`, and `buildRecordRewardTx(...)` directly.
+
+```ts
+import { createAtlasManagedClient } from '@atlasprotocol/server-sdk';
+
+const atlas = createAtlasManagedClient({
+  baseUrl: 'https://registry.atlas-protocol.org',
+  platformAuthToken: process.env.ATLAS_PLATFORM_TOKEN, // forwarded as `Authorization: Bearer <token>`
+  // Optional overrides:
+  // fetch:     globalThis.fetch,
+  // timeoutMs: 30_000,
+});
+```
+
+### Pin a receipt
+
+```ts
+const { urn, cid, pinned_at } = await atlas.pinReceipt(receipt);
+// urn: 'urn:atlas:receipt:rec_abc123'
+// cid: 'bafkrei…' — content-addressed CID of the canonicalized W3C VC
+```
+
+### Verify a receipt
+
+`verifyReceipt` accepts either a full receipt (re-validates the JSON-LD shape, signature, and pin hash) or a `{ urn, cid }` lookup tuple (the registry resolves the canonical bytes from its index):
+
+```ts
+const v1 = await atlas.verifyReceipt(receipt);
+const v2 = await atlas.verifyReceipt({ urn, cid });
+// { valid: boolean, signature_verified: boolean, hash_match: boolean, errors?: string[] }
+```
+
+### Settle on-chain
+
+The registry holds the hot wallet. The platform builds the same args it would pass to `buildSettleTx` and the registry executes the transaction. `bigint` amounts are accepted and serialized to decimal-digit strings before transport (the registry validates strings of digits):
+
+```ts
+const result = await atlas.settle({
+  platformDomain: 'atlas.bjc.events',
+  chain:          'base',
+  organizer:      '0x...',
+  totalAmount:    25_000_000n,           // 25 USDC at 6 decimals
+  paymentId:      '0xabcdef…',
+  platformFees:   [{ recipient: '0x...', amount: 500_000n }],
+});
+// { paymentId, chain, txHash, status: 'submitted' | 'confirmed' | 'failed', explorerUrl }
+```
+
+### Record rewards
+
+```ts
+const result = await atlas.recordRewards({
+  platformDomain: 'atlas.bjc.events',
+  paymentId:      '0xabcdef…',
+  recipients: [
+    { recipient: '0x...', kind: 'organizer', amount: 600_000n },
+    { recipient: '0x...', kind: 'attendee',  amount: 200_000n },
+  ],
+});
+// { paymentId, chain, txHashes, status: 'submitted'|'confirmed'|'failed'|'partial_failure', explorerUrls?, error? }
+```
+
+### Errors
+
+The client throws a typed hierarchy:
+
+| Class | When |
+|-------|------|
+| `AtlasManagedRequestError` | Registry returned 4xx (validation, auth, rate limit). |
+| `AtlasManagedServerError`  | Registry returned 5xx. |
+| `AtlasManagedNetworkError` | Fetch threw, request timed out, or the connection aborted. |
+
+All three extend `AtlasManagedError` and carry `status`, `code`, and optional `details` (parsed from the registry's `{ error: { code, message, details } }` envelope when present).
+
+### Sovereignty alternative
+
+Platforms that prefer to keep custody of their hot wallet and pinner can still reach the contracts directly via `buildSettleTx` / `buildRecordRewardTx` (see *FeeRouter / RewardLedger helpers* above) and pin via `@atlasprotocol/ipfs`. The two paths are mutually exclusive per settlement — pick one and stay with it for the lifetime of a `paymentId`.
+
 ## Spec reference
 
 See [`../../specs/01-PROTOCOL-SPEC.md`](../../specs/01-PROTOCOL-SPEC.md) for the full ATLAS Protocol manifest format, capability list, and signing-key requirements.
