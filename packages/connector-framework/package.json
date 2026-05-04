@@ -1,6 +1,6 @@
 {
   "name": "@atlasprotocol/connector-framework",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Connector framework for ATLAS Protocol. Defines the Connector interface, capability descriptors, auth contexts, search params, and structured error types used by source-platform adapters.",
   "license": "MIT",
   "homepage": "https://github.com/lemonadesocial/atlas-protocol/tree/main/packages/connector-framework#readme",
