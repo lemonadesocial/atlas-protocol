@@ -37,8 +37,8 @@
   "dependencies": {
     "@atlasprotocol/mpp": "workspace:^",
     "@atlasprotocol/types": "workspace:^",
-    "viem": "^2.21.0",
-    "zod": "^3.23.0"
+    "viem": "^2.48.11",
+    "zod": "^4.4.3"
   },
   "peerDependencies": {
     "hono": ">=4.0.0",

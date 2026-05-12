@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@atlasprotocol/types": "workspace:^",
-    "multiformats": "^13.3.0"
+    "multiformats": "^14.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
