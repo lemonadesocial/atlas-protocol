@@ -137,10 +137,10 @@ importers:
         version: link:../../packages/server-sdk
       '@hono/node-server':
         specifier: ^1.13.0
-        version: 1.19.14(hono@4.12.25)
+        version: 1.19.14(hono@4.12.26)
       hono:
         specifier: ^4.12.25
-        version: 4.12.25
+        version: 4.12.26
       stripe:
         specifier: ^14.0.0
         version: 14.25.0
@@ -340,7 +340,7 @@ importers:
         version: 24.12.2
       hono:
         specifier: ^4.12.25
-        version: 4.12.25
+        version: 4.12.26
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
@@ -2258,8 +2258,8 @@ packages:
     resolution: {integrity: sha512-qM0jDhFEaCBb4TxoW7f53Qrpv9RBiayUHo0S52JudprkhvpjIrGoU1mnnr29Fvd1U335ZFPZQY1wlkqgfGXyLg==}
     engines: {node: '>=16.9.0'}
 
-  hono@4.12.25:
-    resolution: {integrity: sha512-2NFaIyNVgJmBs/ecmtGzlmluTFs5cHEWGTdu0t1HBwYzoGXOL5nUQBRMXsXWla5i4KkG//QMzVP88m1+I3fdAQ==}
+  hono@4.12.26:
+    resolution: {integrity: sha512-uyZtpnYxM9CmQ7QsQknM4zN8EftNqhON1qYeIKM0Se67CCEe2c44xyGURwB0axX2fBDu1dqHrHAc1hmNT8ITkw==}
     engines: {node: '>=16.9.0'}
 
   http-errors@2.0.1:
@@ -3885,9 +3885,9 @@ snapshots:
     dependencies:
       hono: 4.12.15
 
-  '@hono/node-server@1.19.14(hono@4.12.25)':
+  '@hono/node-server@1.19.14(hono@4.12.26)':
     dependencies:
-      hono: 4.12.25
+      hono: 4.12.26
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -5460,7 +5460,7 @@ snapshots:
 
   hono@4.12.15: {}
 
-  hono@4.12.25: {}
+  hono@4.12.26: {}
 
   http-errors@2.0.1:
     dependencies:
