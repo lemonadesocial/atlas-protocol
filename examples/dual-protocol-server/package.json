@@ -22,7 +22,7 @@
     "@atlasprotocol/ipfs": "workspace:*",
     "@atlasprotocol/mpp": "workspace:*",
     "@atlasprotocol/server-sdk": "workspace:*",
-    "@hono/node-server": "^1.13.0",
+    "@hono/node-server": "^2.0.10",
     "hono": "^4.12.34",
     "stripe": "^14.0.0",
     "viem": "^2.0.0"
