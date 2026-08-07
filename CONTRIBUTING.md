@@ -46,13 +46,25 @@ forge test
 ## Adding a new TypeScript package
 
 1. Create the directory under `packages/<name>/`.
-2. Add a `package.json` with `"name": "@atlasprotocol/<name>"` and standard `build`/`test`/`lint`/`typecheck` scripts.
+2. Add a `package.json` with `"name": "@atlasprotocol/<name>"` and standard `build`/`test`/`lint`/`typecheck` scripts. Set `"version": "0.1.0"` for the initial commit (do **not** start at `0.0.0` — see *Release-Please versioning notes* below).
 3. Add a `tsconfig.json` that extends the root config:
    ```json
    { "extends": "../../tsconfig.base.json" }
    ```
 4. Workspaces are picked up automatically via `pnpm-workspace.yaml`. Run `pnpm install` from the repo root.
 5. Add the package to the relevant section of the root `README.md`.
+6. Register the package with the release tooling so it gets published:
+   - `release-please-config.json` — add an entry under `packages` with `"package-name": "@atlasprotocol/<name>"`.
+   - `.release-please-manifest.json` — add the same path with the **same starting version** as `package.json` (`"0.1.0"`, not `"0.0.0"`).
+7. First publish requires npm trusted-publisher setup for the new package name. After the release-please publish workflow runs, the first publish will 404 against `https://registry.npmjs.org/<scope>/<name>` until the package exists on npm and the trusted publisher is configured (repo `lemonadesocial/atlas-protocol`, workflow `.github/workflows/release-please.yml`). Either pre-publish a `0.1.0` placeholder by hand to claim the name, or configure org-level trusted publishers ahead of merge.
+
+## Release-Please versioning notes
+
+Releases are cut by [release-please-action](https://github.com/googleapis/release-please-action) on push to `main`.
+
+- **Conventional commit types that trigger a release:** `feat:` (minor pre-1.0), `fix:` (patch), `refactor:` (patch — see `changelog-sections` in `release-please-config.json`), and any commit with `BREAKING CHANGE:` (major pre-1.0 still bumps minor while `bump-minor-pre-major: true`). `docs:`, `style:`, `chore:`, `test:`, `build:`, `ci:` are hidden and do not trigger a release on their own.
+- **Squash-merge subjects matter.** GitHub squash-merge takes the PR title as the commit subject; the body's bullet-listed inner commits are not parsed by release-please. Set the PR title to the conventional-commit type you want release-please to see.
+- **First-version policy.** Seed `.release-please-manifest.json` with `0.1.0` (or another non-zero pre-1.0 baseline) for new packages. Release-please first-releases packages whose manifest entry is `0.0.0` to `1.0.0` (its hardcoded "graduate to v1" default), which is rarely what we want for a freshly added package.
 
 ## Proposing a spec change
 
