@@ -23,7 +23,7 @@
     "@atlasprotocol/mpp": "workspace:*",
     "@atlasprotocol/server-sdk": "workspace:*",
     "@hono/node-server": "^1.19.15",
-    "hono": "^4.12.34",
+    "hono": "^4.13.5",
     "stripe": "^14.0.0",
     "viem": "^2.0.0"
   },
