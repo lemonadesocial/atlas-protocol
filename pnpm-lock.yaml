@@ -49,7 +49,7 @@ importers:
         version: 14.25.0
       viem:
         specifier: ^2.0.0
-        version: 2.48.4(typescript@5.9.3)(zod@4.4.1)
+        version: 2.48.4(typescript@5.9.3)(zod@4.6.6)
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -68,7 +68,7 @@ importers:
         version: link:../../packages/mpp
       viem:
         specifier: ^2.0.0
-        version: 2.48.4(typescript@5.9.3)(zod@4.4.1)
+        version: 2.48.4(typescript@5.9.3)(zod@4.6.6)
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -84,13 +84,13 @@ importers:
     dependencies:
       '@atlasprotocol/agent-tools':
         specifier: ^0.1.0
-        version: 0.1.0(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))(@modelcontextprotocol/sdk@1.32.0(@cfworker/json-schema@4.1.1)(zod@4.4.1))(zod@4.4.1)
+        version: 0.1.0(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))(@modelcontextprotocol/sdk@1.32.0(@cfworker/json-schema@4.1.1)(zod@4.6.6))(zod@4.6.6)
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.0
-        version: 1.32.0(@cfworker/json-schema@4.1.1)(zod@4.4.1)
+        version: 1.32.0(@cfworker/json-schema@4.1.1)(zod@4.6.6)
       zod:
-        specifier: ^4.0.0
-        version: 4.4.1
+        specifier: ^4.6.6
+        version: 4.6.6
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -146,7 +146,7 @@ importers:
         version: 14.25.0
       viem:
         specifier: ^2.0.0
-        version: 2.48.4(typescript@5.9.3)(zod@4.4.1)
+        version: 2.48.4(typescript@5.9.3)(zod@4.6.6)
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -162,22 +162,22 @@ importers:
     dependencies:
       '@atlasprotocol/agent-tools':
         specifier: ^0.1.0
-        version: 0.1.0(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))(@modelcontextprotocol/sdk@1.32.0(@cfworker/json-schema@4.1.1)(zod@4.4.1))(zod@4.4.1)
+        version: 0.1.0(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))(@modelcontextprotocol/sdk@1.32.0(@cfworker/json-schema@4.1.1)(zod@4.6.6))(zod@4.6.6)
       '@langchain/anthropic':
         specifier: ^0.3.0
-        version: 0.3.34(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))(zod@4.4.1)
+        version: 0.3.34(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))(zod@4.6.6)
       '@langchain/core':
         specifier: ^0.3.0
-        version: 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1))
+        version: 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6))
       '@langchain/openai':
         specifier: ^0.3.0
-        version: 0.3.17(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))(ws@8.18.3)
+        version: 0.3.17(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))(ws@8.18.3)
       langchain:
         specifier: ^0.3.0
-        version: 0.3.37(@langchain/anthropic@0.3.34(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))(zod@4.4.1))(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))(openai@4.104.0(ws@8.18.3)(zod@4.4.1))(ws@8.18.3)
+        version: 0.3.37(@langchain/anthropic@0.3.34(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))(zod@4.6.6))(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))(openai@4.104.0(ws@8.18.3)(zod@4.6.6))(ws@8.18.3)
       zod:
-        specifier: ^4.0.0
-        version: 4.4.1
+        specifier: ^4.6.6
+        version: 4.6.6
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -196,10 +196,10 @@ importers:
     dependencies:
       '@atlasprotocol/connector-framework':
         specifier: ^0.1.0
-        version: 0.1.0(@atlasprotocol/server-sdk@0.1.0(typescript@5.9.3)(zod@4.4.1))
+        version: 0.1.0(@atlasprotocol/server-sdk@0.1.0(typescript@5.9.3)(zod@4.6.6))
       '@atlasprotocol/server-sdk':
         specifier: ^0.1.0
-        version: 0.1.0(typescript@5.9.3)(zod@4.4.1)
+        version: 0.1.0(typescript@5.9.3)(zod@4.6.6)
       next:
         specifier: ^15.5.27
         version: 15.5.27(@types/node@24.12.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -210,8 +210,8 @@ importers:
         specifier: ^19.0.0
         version: 19.2.5(react@19.2.5)
       zod:
-        specifier: ^4.0.0
-        version: 4.4.1
+        specifier: ^4.6.6
+        version: 4.6.6
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -239,14 +239,14 @@ importers:
         version: link:../mpp
       viem:
         specifier: ^2.0.0
-        version: 2.48.4(typescript@5.9.3)(zod@4.4.1)
+        version: 2.48.4(typescript@5.9.3)(zod@4.6.6)
     devDependencies:
       '@langchain/core':
         specifier: ^0.3.0
-        version: 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1))
+        version: 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6))
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.0
-        version: 1.32.0(@cfworker/json-schema@4.1.1)(zod@4.4.1)
+        version: 1.32.0(@cfworker/json-schema@4.1.1)(zod@4.6.6)
       '@types/node':
         specifier: ^24.0.0
         version: 24.12.2
@@ -257,8 +257,8 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@24.12.2)
       zod:
-        specifier: ^4.0.0
-        version: 4.4.1
+        specifier: ^4.6.6
+        version: 4.6.6
 
   packages/connector-framework:
     dependencies:
@@ -312,7 +312,7 @@ importers:
         version: 5.9.3
       viem:
         specifier: ^2.0.0
-        version: 2.48.4(typescript@5.9.3)(zod@4.4.1)
+        version: 2.48.4(typescript@5.9.3)(zod@4.6.6)
       vitest:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@24.12.2)
@@ -3544,33 +3544,33 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.4.1:
-    resolution: {integrity: sha512-a6ENMBBGZBsnlSebQ/eKCguSBeGKSf4O7BPnqVPmYGtpBYI7VSqoVqw+QcB7kPRjbqPwhYTpFbVj/RqNz/CT0Q==}
+  zod@4.6.6:
+    resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
 
 snapshots:
 
   '@adraffy/ens-normalize@1.11.1': {}
 
-  '@anthropic-ai/sdk@0.65.0(zod@4.4.1)':
+  '@anthropic-ai/sdk@0.65.0(zod@4.6.6)':
     dependencies:
       json-schema-to-ts: 3.1.1
     optionalDependencies:
-      zod: 4.4.1
+      zod: 4.6.6
 
-  '@atlasprotocol/agent-tools@0.1.0(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))(@modelcontextprotocol/sdk@1.32.0(@cfworker/json-schema@4.1.1)(zod@4.4.1))(zod@4.4.1)':
+  '@atlasprotocol/agent-tools@0.1.0(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))(@modelcontextprotocol/sdk@1.32.0(@cfworker/json-schema@4.1.1)(zod@4.6.6))(zod@4.6.6)':
     dependencies:
-      zod: 4.4.1
+      zod: 4.6.6
     optionalDependencies:
-      '@langchain/core': 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1))
-      '@modelcontextprotocol/sdk': 1.32.0(@cfworker/json-schema@4.1.1)(zod@4.4.1)
+      '@langchain/core': 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6))
+      '@modelcontextprotocol/sdk': 1.32.0(@cfworker/json-schema@4.1.1)(zod@4.6.6)
 
-  '@atlasprotocol/connector-framework@0.1.0(@atlasprotocol/server-sdk@0.1.0(typescript@5.9.3)(zod@4.4.1))':
+  '@atlasprotocol/connector-framework@0.1.0(@atlasprotocol/server-sdk@0.1.0(typescript@5.9.3)(zod@4.6.6))':
     dependencies:
-      '@atlasprotocol/server-sdk': 0.1.0(typescript@5.9.3)(zod@4.4.1)
+      '@atlasprotocol/server-sdk': 0.1.0(typescript@5.9.3)(zod@4.6.6)
 
-  '@atlasprotocol/server-sdk@0.1.0(typescript@5.9.3)(zod@4.4.1)':
+  '@atlasprotocol/server-sdk@0.1.0(typescript@5.9.3)(zod@4.6.6)':
     dependencies:
-      viem: 2.48.4(typescript@5.9.3)(zod@4.4.1)
+      viem: 2.48.4(typescript@5.9.3)(zod@4.6.6)
     transitivePeerDependencies:
       - bufferutil
       - typescript
@@ -4037,22 +4037,22 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
-  '@langchain/anthropic@0.3.34(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))(zod@4.4.1)':
+  '@langchain/anthropic@0.3.34(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))(zod@4.6.6)':
     dependencies:
-      '@anthropic-ai/sdk': 0.65.0(zod@4.4.1)
-      '@langchain/core': 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1))
+      '@anthropic-ai/sdk': 0.65.0(zod@4.6.6)
+      '@langchain/core': 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6))
       fast-xml-parser: 4.5.6
     transitivePeerDependencies:
       - zod
 
-  '@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1))':
+  '@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6))':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       ansi-styles: 5.2.0
       camelcase: 6.3.0
       decamelize: 1.2.0
       js-tiktoken: 1.0.21
-      langsmith: 0.3.87(openai@4.104.0(ws@8.18.3)(zod@4.4.1))
+      langsmith: 0.3.87(openai@4.104.0(ws@8.18.3)(zod@4.6.6))
       mustache: 4.2.0
       p-queue: 6.6.2
       p-retry: 4.6.2
@@ -4065,9 +4065,9 @@ snapshots:
       - '@opentelemetry/sdk-trace-base'
       - openai
 
-  '@langchain/openai@0.3.17(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))(ws@8.18.3)':
+  '@langchain/openai@0.3.17(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))(ws@8.18.3)':
     dependencies:
-      '@langchain/core': 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1))
+      '@langchain/core': 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6))
       js-tiktoken: 1.0.21
       openai: 4.104.0(ws@8.18.3)(zod@3.25.76)
       zod: 3.25.76
@@ -4076,12 +4076,12 @@ snapshots:
       - encoding
       - ws
 
-  '@langchain/textsplitters@0.1.0(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))':
+  '@langchain/textsplitters@0.1.0(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))':
     dependencies:
-      '@langchain/core': 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1))
+      '@langchain/core': 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6))
       js-tiktoken: 1.0.21
 
-  '@modelcontextprotocol/sdk@1.32.0(@cfworker/json-schema@4.1.1)(zod@4.4.1)':
+  '@modelcontextprotocol/sdk@1.32.0(@cfworker/json-schema@4.1.1)(zod@4.6.6)':
     dependencies:
       '@hono/node-server': 1.19.15(hono@4.13.13)
       ajv: 8.20.0
@@ -4098,8 +4098,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.4.1
-      zod-to-json-schema: 3.25.2(zod@4.4.1)
+      zod: 4.6.6
+      zod-to-json-schema: 3.25.2(zod@4.6.6)
     optionalDependencies:
       '@cfworker/json-schema': 4.1.1
     transitivePeerDependencies:
@@ -4500,10 +4500,10 @@ snapshots:
       typescript: 5.9.3
       zod: 3.25.76
 
-  abitype@1.2.3(typescript@5.9.3)(zod@4.4.1):
+  abitype@1.2.3(typescript@5.9.3)(zod@4.6.6):
     optionalDependencies:
       typescript: 5.9.3
-      zod: 4.4.1
+      zod: 4.6.6
 
   abort-controller@3.0.0:
     dependencies:
@@ -5736,22 +5736,22 @@ snapshots:
     dependencies:
       json-buffer: 3.0.1
 
-  langchain@0.3.37(@langchain/anthropic@0.3.34(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))(zod@4.4.1))(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))(openai@4.104.0(ws@8.18.3)(zod@4.4.1))(ws@8.18.3):
+  langchain@0.3.37(@langchain/anthropic@0.3.34(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))(zod@4.6.6))(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))(openai@4.104.0(ws@8.18.3)(zod@4.6.6))(ws@8.18.3):
     dependencies:
-      '@langchain/core': 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1))
-      '@langchain/openai': 0.3.17(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))(ws@8.18.3)
-      '@langchain/textsplitters': 0.1.0(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))
+      '@langchain/core': 0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6))
+      '@langchain/openai': 0.3.17(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))(ws@8.18.3)
+      '@langchain/textsplitters': 0.1.0(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))
       js-tiktoken: 1.0.21
       js-yaml: 4.1.1
       jsonpointer: 5.0.1
-      langsmith: 0.3.87(openai@4.104.0(ws@8.18.3)(zod@4.4.1))
+      langsmith: 0.3.87(openai@4.104.0(ws@8.18.3)(zod@4.6.6))
       openapi-types: 12.1.3
       p-retry: 4.6.2
       uuid: 10.0.0
       yaml: 2.8.3
       zod: 3.25.76
     optionalDependencies:
-      '@langchain/anthropic': 0.3.34(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.4.1)))(zod@4.4.1)
+      '@langchain/anthropic': 0.3.34(@langchain/core@0.3.80(openai@4.104.0(ws@8.18.3)(zod@4.6.6)))(zod@4.6.6)
     transitivePeerDependencies:
       - '@opentelemetry/api'
       - '@opentelemetry/exporter-trace-otlp-proto'
@@ -5760,7 +5760,7 @@ snapshots:
       - openai
       - ws
 
-  langsmith@0.3.87(openai@4.104.0(ws@8.18.3)(zod@4.4.1)):
+  langsmith@0.3.87(openai@4.104.0(ws@8.18.3)(zod@4.6.6)):
     dependencies:
       '@types/uuid': 10.0.0
       chalk: 4.1.2
@@ -5769,7 +5769,7 @@ snapshots:
       semver: 7.7.4
       uuid: 10.0.0
     optionalDependencies:
-      openai: 4.104.0(ws@8.18.3)(zod@4.4.1)
+      openai: 4.104.0(ws@8.18.3)(zod@4.6.6)
 
   language-subtag-registry@0.3.23: {}
 
@@ -5977,7 +5977,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  openai@4.104.0(ws@8.18.3)(zod@4.4.1):
+  openai@4.104.0(ws@8.18.3)(zod@4.6.6):
     dependencies:
       '@types/node': 18.19.130
       '@types/node-fetch': 2.6.13
@@ -5988,7 +5988,7 @@ snapshots:
       node-fetch: 2.7.0
     optionalDependencies:
       ws: 8.18.3
-      zod: 4.4.1
+      zod: 4.6.6
     transitivePeerDependencies:
       - encoding
     optional: true
@@ -6025,7 +6025,7 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  ox@0.14.20(typescript@5.9.3)(zod@4.4.1):
+  ox@0.14.20(typescript@5.9.3)(zod@4.6.6):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -6033,7 +6033,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@5.9.3)(zod@4.4.1)
+      abitype: 1.2.3(typescript@5.9.3)(zod@4.6.6)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.3
@@ -6689,15 +6689,15 @@ snapshots:
       - utf-8-validate
       - zod
 
-  viem@2.48.4(typescript@5.9.3)(zod@4.4.1):
+  viem@2.48.4(typescript@5.9.3)(zod@4.6.6):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@5.9.3)(zod@4.4.1)
+      abitype: 1.2.3(typescript@5.9.3)(zod@4.6.6)
       isows: 1.0.7(ws@8.18.3)
-      ox: 0.14.20(typescript@5.9.3)(zod@4.4.1)
+      ox: 0.14.20(typescript@5.9.3)(zod@4.6.6)
       ws: 8.18.3
     optionalDependencies:
       typescript: 5.9.3
@@ -6863,10 +6863,10 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
-  zod-to-json-schema@3.25.2(zod@4.4.1):
+  zod-to-json-schema@3.25.2(zod@4.6.6):
     dependencies:
-      zod: 4.4.1
+      zod: 4.6.6
 
   zod@3.25.76: {}
 
-  zod@4.4.1: {}
+  zod@4.6.6: {}
